@@ -21,7 +21,7 @@ async function runTests() {
   console.log("==================================================\n");
 
   // 1. Test Bengali Number Conversion
-  console.log("[1/5] Testing Bangla Number Converter...");
+  console.log("[1/4] Testing Bangla Number Converter...");
   const sampleNum = 1234567890;
   const banglaNum = toBanglaNum(sampleNum);
   if (banglaNum !== "১২৩৪৫৬৭৮৯০") {
@@ -30,7 +30,7 @@ async function runTests() {
   console.log(`  ✓ toBanglaNum(1234567890) = ${banglaNum}`);
 
   // 2. Test Booklet Imposition Formula
-  console.log("\n[2/5] Testing 2x1 Folded Booklet Imposition Ordering...");
+  console.log("\n[2/4] Testing 2x1 Folded Booklet Imposition Ordering...");
   const order3Pages = formatBookletOrderForLatex(3);
   console.log(`  ✓ 3 A5 Pages Booklet Order: ${order3Pages} (Expected: {{}, 1, 2, 3})`);
   if (order3Pages !== "{{}, 1, 2, 3}") {
@@ -44,7 +44,7 @@ async function runTests() {
   }
 
   // 3. Test LaTeX Generator with Actual exam_data.json
-  console.log("\n[3/5] Testing TypeScript LaTeX Generator against exam_data.json...");
+  console.log("\n[3/4] Testing TypeScript LaTeX Generator against exam_data.json...");
   const jsonPath = path.join(process.cwd(), "LATEX_CODE", "exam_data.json");
   const rawJson = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
 
@@ -83,7 +83,7 @@ async function runTests() {
   }
 
   // 4. Test In-Browser PDF Imposition & Stitching with pdf-lib
-  console.log("\n[4/5] Testing In-Browser pdf-lib A5->A4 Imposition Engine...");
+  console.log("\n[4/4] Testing In-Browser pdf-lib A5->A4 Imposition Engine...");
   
   // Create sample 3-page A5 PDF
   const sampleA5Doc = await PDFDocument.create();
@@ -125,13 +125,6 @@ async function runTests() {
   console.log(`  ✓ Master Unified PDF Page Count: ${masterDoc.getPageCount()} pages (2 Booklet + 1 MCQ + 1 Sol)`);
   if (masterDoc.getPageCount() !== 4) {
     throw new Error(`Expected 4 total pages in master PDF, got ${masterDoc.getPageCount()}`);
-  }
-
-  // 5. Native XeLaTeX CLI Build Parity Check
-  console.log("\n[5/5] Checking XeLaTeX Generator Pipeline Parity...");
-  if (fs.existsSync(path.join(process.cwd(), "LATEX_CODE", "main.pdf"))) {
-    const stat = fs.statSync(path.join(process.cwd(), "LATEX_CODE", "main.pdf"));
-    console.log(`  ✓ Master LaTeX main.pdf exists: ${(stat.size / 1024).toFixed(1)} KB`);
   }
 
   console.log("\n==================================================");

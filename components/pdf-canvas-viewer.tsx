@@ -1,19 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import {
-  TransformWrapper,
-  TransformComponent,
-} from "react-zoom-pan-pinch";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   ChevronLeft,
   ChevronRight,
   ZoomIn,
   ZoomOut,
   RotateCw,
-  RotateCcw,
   Loader2,
   FileText,
   Scan,
@@ -29,20 +23,56 @@ interface PdfCanvasViewerProps {
 export function PdfCanvasViewer({
   pdfBytes,
   pdfUrl,
-  onDownload,
   className = "",
 }: PdfCanvasViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [rotation, setRotation] = useState<number>(0);
-  const [fitScale, setFitScale] = useState<number>(0.85);
-  const [liveScale, setLiveScale] = useState<number>(0.85);
+  const [scale, setScale] = useState<number>(0);
+  const [fitScale, setFitScale] = useState<number>(1.0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load PDF Document via PDF.js & compute exact Fit-Width scale
+  // Calculate exact fit-to-width scale for current container geometry
+  const computeFitScale = useCallback(
+    (doc: any, currentRotation: number, updateCurrentScale = false) => {
+      if (!doc || !containerRef.current) return;
+      doc
+        .getPage(1)
+        .then((page1: any) => {
+          const baseViewport = page1.getViewport({
+            scale: 1.0,
+            rotation: currentRotation,
+          });
+          const containerWidth =
+            containerRef.current?.clientWidth ||
+            (typeof window !== "undefined" ? window.innerWidth : 800);
+
+          const horizontalPadding = containerWidth < 640 ? 16 : 32;
+          const availableWidth = Math.max(260, containerWidth - horizontalPadding);
+          const computedScale = Number(
+            (availableWidth / baseViewport.width).toFixed(2),
+          );
+          const finalFitScale = Math.max(0.2, Math.min(3.0, computedScale));
+
+          setFitScale(finalFitScale);
+          if (updateCurrentScale || scale === 0) {
+            setScale(finalFitScale);
+          }
+        })
+        .catch(() => {
+          setFitScale(1.0);
+          if (updateCurrentScale || scale === 0) {
+            setScale(1.0);
+          }
+        });
+    },
+    [scale],
+  );
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -79,33 +109,10 @@ export function PdfCanvasViewer({
           setPdfDoc(doc);
           setNumPages(doc.numPages);
           setCurrentPage(1);
-
-          // Calculate exact Fit-Width scale based on first page geometry & container width
-          try {
-            const page1 = await doc.getPage(1);
-            const baseViewport = page1.getViewport({ scale: 1.35, rotation });
-            const containerWidth =
-              containerRef.current?.clientWidth ||
-              (typeof window !== "undefined" ? window.innerWidth : 800);
-            
-            // Available width considering padding on mobile/desktop
-            const padding = containerWidth < 640 ? 20 : 48;
-            const availableWidth = Math.max(280, containerWidth - padding);
-            const calculatedScale = Math.min(
-              1.0,
-              Math.max(0.3, Number((availableWidth / baseViewport.width).toFixed(2)))
-            );
-            setFitScale(calculatedScale);
-            setLiveScale(calculatedScale);
-          } catch {
-            setFitScale(0.75);
-            setLiveScale(0.75);
-          }
-
+          computeFitScale(doc, rotation, true);
           setIsLoading(false);
         }
       } catch (err: any) {
-        console.error("Failed to load PDF in Canvas viewer:", err);
         if (!isCancelled) {
           setError(err?.message || "Failed to render PDF.");
           setIsLoading(false);
@@ -118,7 +125,40 @@ export function PdfCanvasViewer({
     return () => {
       isCancelled = true;
     };
-  }, [pdfBytes, pdfUrl, rotation]);
+  }, [pdfBytes, pdfUrl, rotation, computeFitScale]);
+
+  // Responsive resize observer for automatic fit recalculation
+  useEffect(() => {
+    if (!containerRef.current || !pdfDoc) return;
+
+    let timeoutId: NodeJS.Timeout;
+    const observer = new ResizeObserver(() => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        computeFitScale(pdfDoc, rotation, false);
+      }, 100);
+    });
+
+    observer.observe(containerRef.current);
+    return () => {
+      clearTimeout(timeoutId);
+      observer.disconnect();
+    };
+  }, [pdfDoc, rotation, computeFitScale]);
+
+  const scrollToPage = useCallback(
+    (targetPage: number) => {
+      const clamped = Math.max(1, Math.min(numPages, targetPage));
+      setCurrentPage(clamped);
+      const el = document.getElementById(`pdf-page-${clamped}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    },
+    [numPages],
+  );
+
+  const activeScale = scale || fitScale || 1.0;
 
   return (
     <div
@@ -139,151 +179,119 @@ export function PdfCanvasViewer({
           </span>
         </div>
       ) : (
-        <TransformWrapper
-          key={`transform-${fitScale}`}
-          initialScale={fitScale}
-          minScale={Math.max(0.2, Number((fitScale * 0.5).toFixed(2)))}
-          maxScale={4}
-          centerOnInit={false}
-          initialPositionX={0}
-          initialPositionY={0}
-          wheel={{ disabled: true }}
-          panning={{ disabled: true }}
-          pinch={{ disabled: false, step: 5 }}
-          doubleClick={{ disabled: false, mode: "toggle", step: 1.5 }}
-          onTransform={(ref) => {
-            setLiveScale(ref.state.scale);
-          }}
-        >
-          {({ zoomIn, zoomOut, setTransform }) => (
-            <div className="flex flex-col h-full w-full overflow-hidden">
-              {/* Controls Bar */}
-              <div className="px-3 py-1.5 bg-card border-b border-border flex items-center justify-between shrink-0 z-10 gap-2 overflow-x-auto select-none shadow-2xs">
-                {/* Page Nav */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 cursor-pointer"
-                    disabled={currentPage <= 1}
-                    onClick={() => {
-                      const prev = Math.max(1, currentPage - 1);
-                      setCurrentPage(prev);
-                      const el = document.getElementById(`pdf-page-${prev}`);
-                      el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                    }}
-                    title="Previous Page"
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
+        <div className="flex flex-col h-full w-full overflow-hidden">
+          {/* Controls Bar */}
+          <div className="px-3 py-1.5 bg-card border-b border-border flex items-center justify-between shrink-0 z-10 gap-2 overflow-x-auto select-none shadow-2xs">
+            {/* Page Nav */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 cursor-pointer"
+                disabled={currentPage <= 1}
+                onClick={() => scrollToPage(currentPage - 1)}
+                title="Previous Page"
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
 
-                  <span className="text-xs font-semibold text-foreground px-1 font-mono">
-                    {currentPage} / {numPages}
-                  </span>
+              <span className="text-xs font-semibold text-foreground px-1 font-mono">
+                {currentPage} / {numPages}
+              </span>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 cursor-pointer"
-                    disabled={currentPage >= numPages}
-                    onClick={() => {
-                      const next = Math.min(numPages, currentPage + 1);
-                      setCurrentPage(next);
-                      const el = document.getElementById(`pdf-page-${next}`);
-                      el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                    }}
-                    title="Next Page"
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
-
-                {/* Zoom Controls */}
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 cursor-pointer"
-                    onClick={() => zoomOut(0.2)}
-                    title="Zoom Out"
-                  >
-                    <ZoomOut className="size-3.5" />
-                  </Button>
-
-                  <span
-                    className="text-[11px] font-bold text-muted-foreground w-12 text-center font-mono cursor-pointer hover:text-primary transition-colors"
-                    onClick={() => {
-                      setTransform(0, 0, fitScale);
-                      setLiveScale(fitScale);
-                    }}
-                    title="Click to Reset to Fit Width"
-                  >
-                    {Math.round((liveScale / (fitScale || 1)) * 100)}%
-                  </span>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 cursor-pointer"
-                    onClick={() => zoomIn(0.2)}
-                    title="Zoom In"
-                  >
-                    <ZoomIn className="size-3.5" />
-                  </Button>
-
-                  {/* Fit to Width Button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2 text-xs gap-1 cursor-pointer border-border font-medium"
-                    onClick={() => {
-                      setTransform(0, 0, fitScale);
-                      setLiveScale(fitScale);
-                    }}
-                    title="Fit to Width"
-                  >
-                    <Scan className="size-3 text-primary" />
-                    <span>Fit</span>
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 hidden sm:inline-flex cursor-pointer"
-                    onClick={() => setRotation((r) => (r + 90) % 360)}
-                    title="Rotate 90°"
-                  >
-                    <RotateCw className="size-3.5" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Viewport with Native Scroll for Mac/Laptops and Pinch for Mobile */}
-              <div className="flex-1 w-full h-full overflow-hidden bg-neutral-900/30">
-                <TransformComponent
-                  wrapperClass="!w-full !h-full !overflow-y-auto !overflow-x-auto"
-                  contentClass="!w-full min-h-full flex flex-col items-center justify-start pt-4 pb-20 px-2 sm:px-6 gap-6"
-                  wrapperStyle={{
-                    width: "100%",
-                    height: "100%",
-                    overflowY: "auto",
-                    overflowX: "auto",
-                  }}
-                >
-                  {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
-                    <PdfPageCanvas
-                      key={pageNum}
-                      pdfDoc={pdfDoc}
-                      pageNum={pageNum}
-                      rotation={rotation}
-                      onInView={() => setCurrentPage(pageNum)}
-                    />
-                  ))}
-                </TransformComponent>
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 cursor-pointer"
+                disabled={currentPage >= numPages}
+                onClick={() => scrollToPage(currentPage + 1)}
+                title="Next Page"
+              >
+                <ChevronRight className="size-4" />
+              </Button>
             </div>
-          )}
-        </TransformWrapper>
+
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 cursor-pointer"
+                onClick={() =>
+                  setScale((s) =>
+                    Math.max(0.2, Number(((s || fitScale) - 0.15).toFixed(2))),
+                  )
+                }
+                title="Zoom Out"
+              >
+                <ZoomOut className="size-3.5" />
+              </Button>
+
+              <span
+                className="text-[11px] font-bold text-muted-foreground w-12 text-center font-mono cursor-pointer hover:text-primary transition-colors"
+                onClick={() => setScale(fitScale)}
+                title="Click to Reset to Fit Width"
+              >
+                {Math.round((activeScale / (fitScale || 1)) * 100)}%
+              </span>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 cursor-pointer"
+                onClick={() =>
+                  setScale((s) =>
+                    Math.min(3.0, Number(((s || fitScale) + 0.15).toFixed(2))),
+                  )
+                }
+                title="Zoom In"
+              >
+                <ZoomIn className="size-3.5" />
+              </Button>
+
+              {/* Fit to Width Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs gap-1 cursor-pointer border-border font-medium"
+                onClick={() => setScale(fitScale)}
+                title="Fit to Width"
+              >
+                <Scan className="size-3 text-primary" />
+                <span>Fit</span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 hidden sm:inline-flex cursor-pointer"
+                onClick={() => setRotation((r) => (r + 90) % 360)}
+                title="Rotate 90°"
+              >
+                <RotateCw className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Native Viewport with Zero Excess Scroll */}
+          <div
+            ref={scrollViewportRef}
+            className="flex-1 w-full h-full overflow-y-auto overflow-x-auto bg-neutral-900/30"
+          >
+            <div className="w-fit min-w-full flex flex-col items-center justify-start pt-3 pb-3 gap-6">
+              {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
+                <PdfPageCanvas
+                  key={`${pageNum}-${activeScale}-${rotation}`}
+                  pdfDoc={pdfDoc}
+                  pageNum={pageNum}
+                  scale={activeScale}
+                  rotation={rotation}
+                  onInView={() => setCurrentPage(pageNum)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -292,6 +300,7 @@ export function PdfCanvasViewer({
 interface PdfPageCanvasProps {
   pdfDoc: any;
   pageNum: number;
+  scale: number;
   rotation: number;
   onInView?: () => void;
 }
@@ -299,6 +308,7 @@ interface PdfPageCanvasProps {
 function PdfPageCanvas({
   pdfDoc,
   pageNum,
+  scale,
   rotation,
   onInView,
 }: PdfPageCanvasProps) {
@@ -315,16 +325,15 @@ function PdfPageCanvas({
         const page = await pdfDoc.getPage(pageNum);
         if (!isActive) return;
 
-        // Render at crisp 1.35x baseline for sharp text rendering
-        const baseScale = 1.35;
-        const viewport = page.getViewport({ scale: baseScale, rotation });
+        const viewport = page.getViewport({ scale, rotation });
         const canvas = canvasRef.current;
         if (!canvas) return;
 
         const context = canvas.getContext("2d");
         if (!context) return;
 
-        const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+        const dpr =
+          typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
         const targetWidth = Math.floor(viewport.width);
         const targetHeight = Math.floor(viewport.height);
 
@@ -333,7 +342,7 @@ function PdfPageCanvas({
           containerBoxRef.current.style.height = `${targetHeight}px`;
         }
 
-        // Render in-place with crisp DPR
+        // Render crisp native resolution
         canvas.width = Math.floor(viewport.width * dpr);
         canvas.height = Math.floor(viewport.height * dpr);
         canvas.style.width = `${targetWidth}px`;
@@ -348,9 +357,7 @@ function PdfPageCanvas({
         const task = page.render(renderContext);
         await task.promise;
       } catch (err: any) {
-        if (err?.name !== "RenderingCancelledException") {
-          console.error(`Page ${pageNum} render error:`, err);
-        }
+        // Suppress cancellation exceptions
       }
     }
 
@@ -359,13 +366,32 @@ function PdfPageCanvas({
     return () => {
       isActive = false;
     };
-  }, [pdfDoc, pageNum, rotation]);
+  }, [pdfDoc, pageNum, scale, rotation]);
+
+  // Track currently visible page in viewport via IntersectionObserver
+  useEffect(() => {
+    const el = containerBoxRef.current;
+    if (!el || !onInView) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry && entry.isIntersecting) {
+          onInView();
+        }
+      },
+      { threshold: 0.4 },
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [onInView]);
 
   return (
     <div
       ref={containerBoxRef}
       id={`pdf-page-${pageNum}`}
-      className="relative flex flex-col items-center shadow-xl rounded-sm bg-white overflow-hidden border border-border/90 shrink-0 select-none pointer-events-auto"
+      className="relative flex flex-col items-center shadow-xl rounded-sm bg-white overflow-hidden border border-border/90 shrink-0 select-none pointer-events-auto scroll-mt-3"
     >
       <canvas ref={canvasRef} className="block select-none pointer-events-none" />
       <div className="absolute bottom-1.5 right-2.5 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-mono select-none opacity-50 hover:opacity-100 transition-opacity">

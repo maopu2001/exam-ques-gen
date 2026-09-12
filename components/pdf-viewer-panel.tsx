@@ -1,17 +1,35 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileDown, Sparkles, ExternalLink } from "lucide-react";
-import type { CompilationResult } from "@/lib/compiler/types";
+import { Progress } from "@/components/ui/progress";
+import {
+  Download,
+  FileDown,
+  Sparkles,
+  ExternalLink,
+  Cpu,
+  Layers,
+  CheckCircle2,
+  FileText,
+} from "lucide-react";
+import type { CompilationResult, CompilerLogEntry } from "@/lib/compiler/types";
 import { PdfCanvasViewer } from "./pdf-canvas-viewer";
 
 interface PdfViewerPanelProps {
   result: CompilationResult | null;
   isCompiling: boolean;
+  progressPercent?: number;
+  latestLog?: CompilerLogEntry | null;
 }
 
-export function PdfViewerPanel({ result, isCompiling }: PdfViewerPanelProps) {
+export function PdfViewerPanel({
+  result,
+  isCompiling,
+  progressPercent = 0,
+  latestLog,
+}: PdfViewerPanelProps) {
   const downloadBlob = (bytes?: Uint8Array, filename = "exam.pdf") => {
     if (!bytes) return;
     const blob = new Blob([bytes as any], { type: "application/pdf" });
@@ -25,17 +43,85 @@ export function PdfViewerPanel({ result, isCompiling }: PdfViewerPanelProps) {
     URL.revokeObjectURL(url);
   };
 
+  // Aesthetic In-Progress Stage Card (No UI Flood)
   if (isCompiling) {
+    const isDownloading =
+      latestLog?.message.includes("Downloading") ||
+      latestLog?.message.includes("Fetching") ||
+      progressPercent < 40;
+
     return (
-      <div className="flex flex-col h-full items-center justify-center text-center p-6 bg-muted/10">
-        <div className="size-10 rounded-full border-2 border-primary border-t-transparent animate-spin mb-3" />
-        <h3 className="text-sm font-semibold mb-1 text-foreground">
-          Compiling XeLaTeX Exam PDF...
-        </h3>
-        <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
-          Rendering Bangla typography, generating booklet imposition, and
-          compiling math equations.
-        </p>
+      <div className="flex flex-col h-full items-center justify-center text-center p-6 bg-muted/10 select-none">
+        <div className="w-full max-w-sm p-6 rounded-2xl bg-card border border-border shadow-xl flex flex-col items-center gap-4 animate-in zoom-in-95 duration-200">
+          {/* Animated Icon Avatar */}
+          <div className="relative size-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+            {isDownloading ? (
+              <Cpu className="size-7 animate-pulse text-primary" />
+            ) : (
+              <Layers className="size-7 animate-bounce text-accent" />
+            )}
+            <div className="absolute -top-1 -right-1 size-3.5 rounded-full bg-accent animate-ping" />
+          </div>
+
+          {/* Title & Stage */}
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-foreground">
+              {isDownloading
+                ? "Setting Up TeX Live WASM..."
+                : "Compiling Exam in WebAssembly..."}
+            </h3>
+            <p className="text-xs text-muted-foreground font-medium truncate max-w-xs px-2">
+              {latestLog?.message || "Processing LaTeX compilation..."}
+            </p>
+          </div>
+
+          {/* Progress Bar & Percentage */}
+          <div className="w-full space-y-1.5 pt-1">
+            <div className="flex justify-between items-center text-[11px] font-semibold font-mono">
+              <span className="text-muted-foreground">Progress</span>
+              <span className="text-primary">{progressPercent}%</span>
+            </div>
+            <Progress value={progressPercent} className="h-2" />
+          </div>
+
+          {/* Stage Badges */}
+          <div className="flex items-center gap-1.5 pt-1">
+            <Badge
+              variant="outline"
+              className={`text-[10px] py-0 h-5 font-medium transition-colors ${
+                progressPercent >= 38
+                  ? "bg-accent/15 text-accent border-accent/40"
+                  : "bg-muted text-muted-foreground border-border"
+              }`}
+            >
+              1. WASM Engine
+            </Badge>
+            <Badge
+              variant="outline"
+              className={`text-[10px] py-0 h-5 font-medium transition-colors ${
+                progressPercent >= 75
+                  ? "bg-accent/15 text-accent border-accent/40"
+                  : progressPercent >= 40
+                  ? "bg-primary/15 text-primary border-primary/40 animate-pulse"
+                  : "bg-muted text-muted-foreground border-border"
+              }`}
+            >
+              2. XeLaTeX
+            </Badge>
+            <Badge
+              variant="outline"
+              className={`text-[10px] py-0 h-5 font-medium transition-colors ${
+                progressPercent >= 96
+                  ? "bg-accent/15 text-accent border-accent/40"
+                  : progressPercent >= 75
+                  ? "bg-primary/15 text-primary border-primary/40 animate-pulse"
+                  : "bg-muted text-muted-foreground border-border"
+              }`}
+            >
+              3. Booklet PDF
+            </Badge>
+          </div>
+        </div>
       </div>
     );
   }
@@ -46,9 +132,9 @@ export function PdfViewerPanel({ result, isCompiling }: PdfViewerPanelProps) {
     (!result.masterPdfUrl && !result.masterPdfBytes)
   ) {
     return (
-      <div className="flex flex-col h-full items-center justify-center text-center p-6 bg-muted/10">
+      <div className="flex flex-col h-full items-center justify-center text-center p-6 bg-muted/10 select-none">
         <div className="size-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-3">
-          <Sparkles className="size-7 text-yellow-600" />
+          <Sparkles className="size-7 text-accent" />
         </div>
         <h3 className="font-semibold text-base mb-1 text-foreground">
           Universal PDF Canvas Ready
@@ -78,7 +164,7 @@ export function PdfViewerPanel({ result, isCompiling }: PdfViewerPanelProps) {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Open in New Tab Button (Replaces Fullscreen across all devices) */}
+          {/* Open in New Tab Button */}
           {result.masterPdfUrl && (
             <Button
               size="sm"

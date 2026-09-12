@@ -59,9 +59,7 @@ export async function saveCompiledPdfToCache(record: Omit<CachedPdfRecord, "time
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
-  } catch (err) {
-    console.warn("Failed to save PDF to IndexedDB cache:", err);
-  }
+  } catch (err) {}
 }
 
 /**
@@ -94,7 +92,6 @@ export async function getCachedCompiledPdf(): Promise<CachedPdfRecord | null> {
       request.onerror = () => reject(request.error);
     });
   } catch (err) {
-    console.warn("Failed to read from IndexedDB cache:", err);
     return null;
   }
 }
@@ -112,7 +109,5 @@ export async function clearCachedCompiledPdf(): Promise<void> {
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
-  } catch (err) {
-    console.warn("Failed to clear IndexedDB cache:", err);
-  }
+  } catch (err) {}
 }

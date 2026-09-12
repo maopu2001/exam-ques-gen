@@ -10,9 +10,15 @@ interface CompilerLogsDrawerProps {
   logs: CompilerLogEntry[];
   isCompiling: boolean;
   progressPercent: number;
+  latestLog?: CompilerLogEntry | null;
 }
 
-export function CompilerLogsDrawer({ logs, isCompiling, progressPercent }: CompilerLogsDrawerProps) {
+export function CompilerLogsDrawer({
+  logs,
+  isCompiling,
+  progressPercent,
+  latestLog,
+}: CompilerLogsDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -22,40 +28,40 @@ export function CompilerLogsDrawer({ logs, isCompiling, progressPercent }: Compi
     }
   }, [logs]);
 
-  const latestLog = logs[logs.length - 1];
+  const activeMessage = latestLog?.message || (logs.length > 0 ? logs[logs.length - 1].message : "");
 
   return (
-    <div className="border-t bg-card/90 backdrop-blur shrink-0 transition-all">
+    <div className="border-t bg-card/95 backdrop-blur shrink-0 transition-all select-none">
       {/* Header bar */}
       <div className="px-3 py-1.5 flex items-center justify-between text-xs">
-        <div className="flex items-center gap-2 overflow-hidden">
+        <div className="flex items-center gap-2 overflow-hidden flex-1 mr-2">
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 px-1.5 gap-1 text-xs text-muted-foreground hover:text-foreground"
+            className="h-6 px-1.5 gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
             onClick={() => setIsOpen(!isOpen)}
           >
-            <Terminal className="size-3.5" />
-            <span>Compiler Output</span>
+            <Terminal className="size-3.5 text-primary" />
+            <span className="font-semibold">Status & Logs</span>
             {isOpen ? <ChevronDown className="size-3" /> : <ChevronUp className="size-3" />}
           </Button>
 
           {isCompiling && (
-            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] animate-pulse bg-primary/10 text-primary">
-              Compiling ({progressPercent}%)
+            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-bold font-mono animate-pulse bg-primary/15 text-primary">
+              {progressPercent}%
             </Badge>
           )}
 
-          {latestLog && (
-            <span className="truncate text-muted-foreground font-mono text-[11px] hidden sm:inline">
-              {latestLog.message}
+          {activeMessage && (
+            <span className="truncate text-muted-foreground font-medium text-[11px]">
+              {activeMessage}
             </span>
           )}
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[11px] text-muted-foreground">
-            {logs.length} events
+          <span className="text-[11px] font-mono text-muted-foreground">
+            {logs.length} milestones
           </span>
         </div>
       </div>
@@ -64,14 +70,16 @@ export function CompilerLogsDrawer({ logs, isCompiling, progressPercent }: Compi
       {isOpen && (
         <div
           ref={scrollRef}
-          className="h-44 p-3 bg-neutral-950 font-mono text-[11px] text-neutral-300 overflow-auto border-t border-neutral-800 space-y-1"
+          className="h-44 p-3 bg-neutral-950 font-mono text-[11px] text-neutral-300 overflow-auto border-t border-neutral-800 space-y-1.5"
         >
           {logs.length === 0 ? (
-            <div className="text-neutral-500 italic">No compilation logs yet. Click &quot;Compile Exam PDF&quot;.</div>
+            <div className="text-neutral-500 italic py-2">
+              No compilation milestones yet. Click &quot;Compile Exam PDF&quot;.
+            </div>
           ) : (
             logs.map((log) => (
               <div key={log.id} className="flex items-start gap-2 leading-relaxed">
-                <span className="text-neutral-500 shrink-0">
+                <span className="text-neutral-500 shrink-0 font-mono">
                   {new Date(log.timestamp).toLocaleTimeString()}
                 </span>
                 {log.type === "success" && <CheckCircle2 className="size-3.5 text-accent shrink-0 mt-0.5" />}
@@ -82,8 +90,8 @@ export function CompilerLogsDrawer({ logs, isCompiling, progressPercent }: Compi
                     log.type === "error"
                       ? "text-destructive font-semibold"
                       : log.type === "success"
-                      ? "text-accent"
-                      : "text-foreground"
+                      ? "text-emerald-400"
+                      : "text-neutral-200"
                   }
                 >
                   {log.message}

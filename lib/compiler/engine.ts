@@ -5,124 +5,148 @@ import type {
   CompilerStage,
   WorkerOutMessage,
 } from "./types";
+import { isAllDataCached, setCacheValid } from "./asset-cache";
 
 export type ProgressCallback = (
   stage: CompilerStage,
   percent: number,
-  log: CompilerLogEntry
+  log: CompilerLogEntry,
 ) => void;
 
-function base64ToUint8Array(base64: string): Uint8Array {
-  const binaryString = window.atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
+export type WarmupProgressCallback = (progress: {
+  percent: number;
+  message: string;
+  speed?: string;
+}) => void;
 
 class LatexCompilerEngine {
-  private worker: Worker | null = null;
+  private compilerWorker: Worker | null = null;
   private currentBlobUrl: string | null = null;
+  private isWarmedUp: boolean = false;
+  private warmupPromise: Promise<void> | null = null;
 
-  private getWorker(): Worker {
-    if (!this.worker) {
-      this.worker = new Worker(
+  private getCompilerWorker(): Worker {
+    if (!this.compilerWorker) {
+      this.compilerWorker = new Worker(
         new URL("../../workers/latex-compiler.worker.ts", import.meta.url),
-        { type: "module" }
+        { type: "module" },
       );
     }
-    return this.worker;
+    return this.compilerWorker;
+  }
+
+  public async warmup(onProgress?: WarmupProgressCallback): Promise<void> {
+    if (this.isWarmedUp) {
+      onProgress?.({ percent: 100, message: "Ready", speed: "" });
+      return;
+    }
+
+    if (this.warmupPromise) {
+      return this.warmupPromise;
+    }
+
+    this.warmupPromise = (async () => {
+      // 1. Fast path: Check if 30-day persistent IndexedDB cache is valid
+      const alreadyCached = await isAllDataCached();
+      if (alreadyCached) {
+        this.isWarmedUp = true;
+        onProgress?.({
+          percent: 100,
+          message: "Cache verified",
+          speed: "",
+        });
+        return;
+      }
+
+      // 2. Cold path: Spawn dedicated Downloader Worker (Worker 1)
+      const downloaderWorker = new Worker(
+        new URL("../../workers/asset-downloader.worker.ts", import.meta.url),
+        { type: "module" },
+      );
+
+      const requestId = Math.random().toString(36).substring(2, 9);
+      let maxReportedPercent = 0;
+
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = () => {
+          downloaderWorker.removeEventListener("message", handleMessage);
+          downloaderWorker.removeEventListener("error", handleError);
+          downloaderWorker.terminate();
+        };
+
+        const handleError = (event: ErrorEvent) => {
+          cleanup();
+          reject(
+            new Error(
+              event.message || "Failed to initialize asset downloader worker",
+            ),
+          );
+        };
+
+        const handleMessage = (event: MessageEvent) => {
+          const data = event.data;
+          if (data.id !== requestId) return;
+
+          if (data.type === "DOWNLOAD_PROGRESS") {
+            maxReportedPercent = Math.min(
+              100,
+              Math.max(maxReportedPercent, data.percent),
+            );
+            onProgress?.({
+              percent: maxReportedPercent,
+              message: data.message,
+              speed: data.speed || "",
+            });
+          } else if (
+            data.type === "DOWNLOAD_COMPLETE" ||
+            data.type === "DOWNLOAD_ERROR"
+          ) {
+            cleanup();
+            if (data.type === "DOWNLOAD_COMPLETE") {
+              setCacheValid();
+            }
+            if (data.type === "DOWNLOAD_ERROR") {
+              reject(new Error(data.error || "Failed to download TeX assets"));
+              return;
+            }
+            this.isWarmedUp = true;
+            onProgress?.({
+              percent: 100,
+              message: "TeX Live engine ready",
+              speed: "",
+            });
+            resolve();
+          }
+        };
+
+        downloaderWorker.addEventListener("message", handleMessage);
+        downloaderWorker.addEventListener("error", handleError);
+        downloaderWorker.postMessage({
+          type: "START_DOWNLOAD",
+          id: requestId,
+        });
+      });
+    })();
+
+    try {
+      await this.warmupPromise;
+    } finally {
+      this.warmupPromise = null;
+    }
   }
 
   public async compile(
     jsonInput: unknown,
     options: CompileOptions = {},
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
   ): Promise<CompilationResult> {
     if (this.currentBlobUrl) {
       URL.revokeObjectURL(this.currentBlobUrl);
       this.currentBlobUrl = null;
     }
 
-    // 1. First Attempt: Native High-Fidelity XeLaTeX Engine via API
-    try {
-      onProgress?.("preparing", 15, {
-        id: "log-1",
-        stage: "preparing",
-        message: "Sending exam JSON to XeLaTeX compilation pipeline...",
-        type: "info",
-        timestamp: Date.now(),
-      });
-
-      const response = await fetch("/api/compile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jsonInput, options }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        // Emit logs from server
-        if (Array.isArray(data.logs)) {
-          data.logs.forEach((l: CompilerLogEntry, idx: number) => {
-            const pct = Math.min(95, 20 + idx * 15);
-            onProgress?.(l.stage, pct, l);
-          });
-        }
-
-        const masterPdfBytes = base64ToUint8Array(data.masterPdfBase64);
-        const cqSqPdfBytes = data.cqSqPdfBase64
-          ? base64ToUint8Array(data.cqSqPdfBase64)
-          : undefined;
-        const mcqPdfBytes = data.mcqPdfBase64
-          ? base64ToUint8Array(data.mcqPdfBase64)
-          : undefined;
-        const solPdfBytes = data.solPdfBase64
-          ? base64ToUint8Array(data.solPdfBase64)
-          : undefined;
-
-        const blob = new Blob([masterPdfBytes as any], {
-          type: "application/pdf",
-        });
-        const masterPdfUrl = URL.createObjectURL(blob);
-        this.currentBlobUrl = masterPdfUrl;
-
-        onProgress?.("complete", 100, {
-          id: "log-done",
-          stage: "complete",
-          message: `XeLaTeX build complete (${(data.durationMs / 1000).toFixed(2)}s).`,
-          type: "success",
-          timestamp: Date.now(),
-        });
-
-        return {
-          success: true,
-          masterPdfUrl,
-          masterPdfBytes,
-          cqSqPdfBytes,
-          mcqPdfBytes,
-          solPdfBytes,
-          pageCount: data.pageCount || 5,
-          logs: data.logs || [],
-          durationMs: data.durationMs || 0,
-        };
-      } else if (data.error) {
-        return {
-          success: false,
-          logs: data.logs || [],
-          error: data.error,
-          durationMs: 0,
-        };
-      }
-    } catch (apiErr) {
-      console.warn("Server compilation route unavailable, falling back to Web Worker:", apiErr);
-    }
-
-    // 2. Fallback Attempt: Client-side Web Worker
-    const worker = this.getWorker();
+    // Spawn / use dedicated Compiler Worker (Worker 2)
+    const worker = this.getCompilerWorker();
     const requestId = Math.random().toString(36).substring(2, 9);
 
     return new Promise<CompilationResult>((resolve) => {
@@ -171,10 +195,12 @@ class LatexCompilerEngine {
   }
 
   public terminate() {
-    if (this.worker) {
-      this.worker.terminate();
-      this.worker = null;
+    if (this.compilerWorker) {
+      this.compilerWorker.terminate();
+      this.compilerWorker = null;
     }
+    this.isWarmedUp = false;
+    this.warmupPromise = null;
     if (this.currentBlobUrl) {
       URL.revokeObjectURL(this.currentBlobUrl);
       this.currentBlobUrl = null;

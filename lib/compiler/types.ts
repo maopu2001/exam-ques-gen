@@ -1,3 +1,5 @@
+import type { CompileOptions } from "@/lib/generator";
+
 export type CompilerStage =
   | "idle"
   | "preparing"
@@ -34,11 +36,7 @@ export interface WorkerCompileRequest {
   type: "COMPILE_EXAM";
   id: string;
   jsonInput: unknown;
-  options?: {
-    setName?: string;
-    shuffleMcq?: boolean;
-    seed?: number;
-  };
+  options?: CompileOptions;
 }
 
 export interface WorkerProgressMessage {

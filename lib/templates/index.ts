@@ -1,14 +1,11 @@
 export const PREAMBLE_TEX = `% ==============================================================================
 % LATEX PREAMBLE & STYLING DEFINITIONS
-% Bengali Font: Kalpurush
-% English Font: Times New Roman
-% Math Font: Times Roman (newtxmath)
-% Compatible with XeLaTeX
+% Bengali OpenType Font: Kalpurush.ttf
+% Compatible with XeLaTeX & WebAssembly TeX Live
 % ==============================================================================
 
 \\usepackage{geometry}
 \\usepackage{amsmath,amssymb,amsfonts}
-\\usepackage{newtxmath}          % Times Roman math font matching Times New Roman
 \\usepackage{fontspec}
 \\usepackage{polyglossia}
 \\usepackage{tabularx,booktabs,array,makecell}
@@ -18,22 +15,26 @@ export const PREAMBLE_TEX = `% =================================================
 \\usepackage{calc}
 \\usepackage{ifthen}
 \\usepackage{tikz}
-\\usepackage{pgfplots}
-\\pgfplotsset{compat=1.18}
-\\usepackage{tasks}
 
 % --- Language & Font Setup (XeLaTeX) ---
 \\setdefaultlanguage{bengali}
 \\setotherlanguage{english}
 
 \\defaultfontfeatures{Ligatures=TeX}
-\\setmainfont[
+
+% Load Kalpurush directly by filename from MEMFS root directory
+\\setmainfont{Kalpurush.ttf}[
+    Path = ./,
     Script=Bengali,
     AutoFakeBold=2.0,
     AutoFakeSlant=0.2
-]{Kalpurush}
+]
 
-\\newfontfamily\\englishfont{Times New Roman}
+\\newfontfamily\\englishfont{Kalpurush.ttf}[
+    Path = ./,
+    AutoFakeBold=2.0,
+    AutoFakeSlant=0.2
+]
 \\newcommand{\\en}[1]{{\\englishfont #1}}
 
 % --- Bangladeshi NCTB Math Operator Standards ---
@@ -156,7 +157,7 @@ export const PREAMBLE_TEX = `% =================================================
   \\setlength{\\parindent}{0pt}%
   \\setlength{\\parskip}{1pt plus 0.5pt minus 0.5pt}%
 }{%
-  \\end{minipage}\\par\\vspace{3.5pt plus \\maxitemstretch minus 1pt}%
+  \\end{minipage}\\par\\vspace{3.5pt plus \\maxitemstretch minus 0pt}%
 }
 
 % --- MCQ Column Widths & Dedicated Number Column ---

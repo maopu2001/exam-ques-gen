@@ -72,6 +72,7 @@ export default function HomePage() {
   const [isCompiling, setIsCompiling] = useState(false);
   const [progressPercent, setProgressPercent] = useState(0);
   const [logs, setLogs] = useState<CompilerLogEntry[]>([]);
+  const [latestLog, setLatestLog] = useState<CompilerLogEntry | null>(null);
   const [compilationResult, setCompilationResult] =
     useState<CompilationResult | null>(null);
 
@@ -130,9 +131,7 @@ export default function HomePage() {
           });
           toast.info("Restored compiled PDF from 1-hour cache.");
         }
-      } catch (err) {
-        console.warn("Could not restore cached PDF:", err);
-      }
+      } catch (err) {}
     }
 
     restoreCachedPdf();
@@ -203,6 +202,7 @@ export default function HomePage() {
     setIsCompiling(true);
     setProgressPercent(10);
     setLogs([]);
+    setLatestLog(null);
     setMobileTab("pdf");
 
     try {
@@ -211,7 +211,12 @@ export default function HomePage() {
         { includeSolutions },
         (stage, percent, log) => {
           setProgressPercent(percent);
-          setLogs((prev) => [...prev, log]);
+          setLatestLog(log);
+          // Only add to log history if it's a milestone log (type !== 'info' or explicit milestone)
+          setLogs((prev) => {
+            if (prev.some((l) => l.message === log.message)) return prev;
+            return [...prev, log];
+          });
         }
       );
 
@@ -257,6 +262,10 @@ export default function HomePage() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleCompile, handleFormatJson]);
+
+  const handlePreloadComplete = useCallback(() => {
+    setIsAppReady(true);
+  }, []);
 
   return (
     <div className="flex flex-col h-[100dvh] overflow-hidden bg-background text-foreground">
@@ -492,6 +501,8 @@ export default function HomePage() {
               <PdfViewerPanel
                 result={compilationResult}
                 isCompiling={isCompiling}
+                progressPercent={progressPercent}
+                latestLog={latestLog}
               />
             </Panel>
           </PanelGroup>
@@ -563,6 +574,8 @@ export default function HomePage() {
               <PdfViewerPanel
                 result={compilationResult}
                 isCompiling={isCompiling}
+                progressPercent={progressPercent}
+                latestLog={latestLog}
               />
             </div>
           )}
@@ -613,6 +626,7 @@ export default function HomePage() {
         logs={logs}
         isCompiling={isCompiling}
         progressPercent={progressPercent}
+        latestLog={latestLog}
       />
 
       {/* 6. MODALS & SHEETS */}
@@ -634,8 +648,8 @@ export default function HomePage() {
         onOpenAiPrompt={() => setAiPromptOpen(true)}
       />
 
-      {/* 7. APP INITIAL SPLASH SCREEN */}
-      <AppSplashScreen isReady={isAppReady} />
+      {/* 7. APP INITIAL SPLASH SCREEN WITH 30-DAY PRELOADER */}
+      <AppSplashScreen onPreloadComplete={handlePreloadComplete} />
     </div>
   );
 }
