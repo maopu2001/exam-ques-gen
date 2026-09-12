@@ -47,7 +47,7 @@ export function CompilerLogsDrawer({ logs, isCompiling, progressPercent }: Compi
           )}
 
           {latestLog && (
-            <span className="truncate text-muted-foreground font-mono text-[11px]">
+            <span className="truncate text-muted-foreground font-mono text-[11px] hidden sm:inline">
               {latestLog.message}
             </span>
           )}
@@ -74,16 +74,16 @@ export function CompilerLogsDrawer({ logs, isCompiling, progressPercent }: Compi
                 <span className="text-neutral-500 shrink-0">
                   {new Date(log.timestamp).toLocaleTimeString()}
                 </span>
-                {log.type === "success" && <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0 mt-0.5" />}
-                {log.type === "error" && <AlertCircle className="size-3.5 text-rose-400 shrink-0 mt-0.5" />}
-                {log.type === "info" && <Info className="size-3.5 text-sky-400 shrink-0 mt-0.5" />}
+                {log.type === "success" && <CheckCircle2 className="size-3.5 text-accent shrink-0 mt-0.5" />}
+                {log.type === "error" && <AlertCircle className="size-3.5 text-destructive shrink-0 mt-0.5" />}
+                {log.type === "info" && <Info className="size-3.5 text-primary shrink-0 mt-0.5" />}
                 <span
                   className={
                     log.type === "error"
-                      ? "text-rose-400 font-semibold"
+                      ? "text-destructive font-semibold"
                       : log.type === "success"
-                      ? "text-emerald-300"
-                      : "text-neutral-200"
+                      ? "text-accent"
+                      : "text-foreground"
                   }
                 >
                   {log.message}

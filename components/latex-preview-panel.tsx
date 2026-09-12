@@ -59,7 +59,7 @@ export function LatexPreviewPanel({ bundle }: LatexPreviewPanelProps) {
               onClick={() => handleCopy(f.id, f.content)}
             >
               {copiedTab === f.id ? (
-                <Check className="size-3 text-emerald-400" />
+                <Check className="size-3 text-accent" />
               ) : (
                 <Copy className="size-3" />
               )}

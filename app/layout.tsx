@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
-  title: "Exam Question Generator & Compiler",
-  description: "Generate and compile LaTeX Bengali & English exam papers in browser",
+  title: "Exam Studio",
+  description: "JSON-Driven Automated LaTeX Exam Generator with In-Browser Imposition",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
@@ -18,7 +22,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background text-foreground antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
-          <Toaster position="bottom-right" richColors />
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

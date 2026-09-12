@@ -12,6 +12,7 @@ const execFileAsync = promisify(execFile);
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
   const logs: CompilerLogEntry[] = [];
+  let tmpDir: string | null = null;
 
   const addLog = (
     stage: CompilerStage,
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
     addLog("preparing", "Generated LaTeX streams for CQ, SQ, MCQ & Solutions", "success");
 
     // Create unique isolated temp workspace for compilation
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "exam-build-"));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "exam-build-"));
     const workdir = path.join(tmpDir, "main");
     const sectionsDir = path.join(workdir, "sections");
     fs.mkdirSync(sectionsDir, { recursive: true });
@@ -173,11 +174,6 @@ ${solPdfInclusion}\\end{document}
     const mcqPdfBytes = fs.readFileSync(path.join(workdir, "main_mcq.pdf"));
     const solPdfBytes = fs.readFileSync(path.join(workdir, "main_mcq_sol.pdf"));
 
-    // Cleanup temp directory
-    try {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    } catch {}
-
     const durationMs = Date.now() - startTime;
     addLog("complete", `All builds completed in ${(durationMs / 1000).toFixed(2)}s`, "success");
 
@@ -203,5 +199,11 @@ ${solPdfInclusion}\\end{document}
       },
       { status: 500 }
     );
+  } finally {
+    if (tmpDir) {
+      try {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      } catch {}
+    }
   }
 }

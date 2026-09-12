@@ -1,58 +1,112 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
-  }
+@custom-variant dark (&:is(.dark *));
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-  }
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+:root {
+  /* --- LIGHT THEME (Sampled from Logo) --- */
+  --background: #f1f5f9;              /* Slate Light Canvas */
+  --foreground: #0b132b;              /* Deep Ink Navy */
+
+  --card: #ffffff;                    /* Pure White Surface */
+  --card-foreground: #0b132b;
+
+  --popover: #ffffff;
+  --popover-foreground: #0b132b;
+
+  /* Primary: Electric Cobalt Sapphire (#2563EB) */
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+
+  /* Accent: NCTB Vivid Emerald (#059669) */
+  --accent: #059669;
+  --accent-foreground: #ffffff;
+
+  --secondary: #e2e8f0;
+  --secondary-foreground: #0b132b;
+
+  --muted: #e2e8f0;
+  --muted-foreground: #475569;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --border: #cbd5e1;                  /* Solid defined boundary */
+  --input: #cbd5e1;
+  --ring: #2563eb;
+  --radius: 0.5rem;
+}
+
+.dark {
+  /* --- DARK THEME (Sampled from Logo) --- */
+  --background: #0b1120;              /* Midnight Obsidian Canvas */
+  --foreground: #f8fafc;              /* Crisp Frost White */
+
+  --card: #131d38;                    /* Deep Sapphire Obsidian Surface */
+  --card-foreground: #f8fafc;
+
+  --popover: #131d38;
+  --popover-foreground: #f8fafc;
+
+  /* Primary: Vivid Electric Cobalt (#3B82F6) */
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+
+  /* Accent: Glowing NCTB Mint Emerald (#10B981) */
+  --accent: #10b981;
+  --accent-foreground: #0b1120;
+
+  --secondary: #1a2747;
+  --secondary-foreground: #f8fafc;
+
+  --muted: #1a2747;
+  --muted-foreground: #94a3b8;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #23355b;                  /* Defined dark border */
+  --input: #23355b;
+  --ring: #3b82f6;
 }
 
 @layer base {
   * {
-    border-color: hsl(var(--border));
+    border-color: var(--border);
   }
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background-color: var(--background);
+    color: var(--foreground);
   }
 }

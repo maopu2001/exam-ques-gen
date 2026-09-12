@@ -15,7 +15,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ">
         <Sun className="size-4 opacity-50" />
       </Button>
     );
@@ -31,7 +31,11 @@ export function ThemeToggle() {
       onClick={() => setTheme(isDark ? "light" : "dark")}
       title={isDark ? "Switch to Light Theme" : "Switch to Dark Theme"}
     >
-      {isDark ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4 text-slate-700" />}
+      {isDark ? (
+        <Sun className="size-4 text-yellow-600" />
+      ) : (
+        <Moon className="size-4 text-foreground" />
+      )}
       <span className="sr-only">Toggle theme</span>
     </Button>
   );
