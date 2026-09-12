@@ -24,6 +24,8 @@ import {
   Trash2,
   CheckCircle2,
   FileText,
+  Upload,
+  ClipboardPaste,
 } from "lucide-react";
 
 interface MobileSettingsSheetProps {
@@ -37,6 +39,8 @@ interface MobileSettingsSheetProps {
   onClearJson: () => void;
   onResetSample: () => void;
   onOpenAiPrompt: () => void;
+  onUploadJson?: () => void;
+  onPasteClipboard?: () => void;
 }
 
 export function MobileSettingsSheet({
@@ -50,6 +54,8 @@ export function MobileSettingsSheet({
   onClearJson,
   onResetSample,
   onOpenAiPrompt,
+  onUploadJson,
+  onPasteClipboard,
 }: MobileSettingsSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -114,6 +120,32 @@ export function MobileSettingsSheet({
 
         {/* 3. Action Buttons Grid */}
         <div className="grid grid-cols-2 gap-2 pt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 text-xs gap-1.5 justify-start px-3"
+            onClick={() => {
+              onUploadJson?.();
+              onOpenChange(false);
+            }}
+          >
+            <Upload className="size-3.5 text-primary" />
+            Import JSON File
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 text-xs gap-1.5 justify-start px-3"
+            onClick={() => {
+              onPasteClipboard?.();
+              onOpenChange(false);
+            }}
+          >
+            <ClipboardPaste className="size-3.5 text-primary" />
+            Paste Clipboard
+          </Button>
+
           <Button
             variant="outline"
             size="sm"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,12 +45,15 @@ import {
   SlidersHorizontal,
   GripVertical,
   Layers,
+  Upload,
+  ClipboardPaste,
 } from "lucide-react";
 import { toast } from "sonner";
 
 const STORAGE_KEY = "exam_studio_draft_json";
 
 export default function HomePage() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [jsonText, setJsonText] = useState(() => {
     if (typeof window !== "undefined") {
       try {
@@ -101,11 +104,15 @@ export default function HomePage() {
     setIsAppReady(true);
   }, []);
 
-  // Persist draft indefinitely across browser sessions
+  // Persist draft indefinitely across browser sessions (debounced 500ms for large JSON performance)
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, jsonText);
-    } catch {}
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, jsonText);
+      } catch {}
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [jsonText]);
 
   // Restore previously compiled PDF from IndexedDB (1-hour cache)
@@ -158,6 +165,61 @@ export default function HomePage() {
       setJsonError(err.message || "Invalid JSON syntax");
     }
   }, [jsonText]);
+
+  const handleFileUpload = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        if (content) {
+          setJsonText(content);
+          try {
+            const parsed = JSON.parse(content);
+            if (parsed.preset) setSelectedPreset(parsed.preset);
+            toast.success(`Imported "${file.name}" cleanly!`);
+          } catch {
+            toast.warning(
+              `Imported "${file.name}", but JSON syntax has errors.`,
+            );
+          }
+        }
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      };
+      reader.onerror = () => {
+        toast.error("Failed to read JSON file.");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      };
+      reader.readAsText(file);
+    },
+    [],
+  );
+
+  const handlePasteClipboard = useCallback(async () => {
+    try {
+      if (typeof navigator === "undefined" || !navigator.clipboard?.readText) {
+        toast.error("Clipboard API not supported in this browser.");
+        return;
+      }
+      const text = await navigator.clipboard.readText();
+      if (!text || !text.trim()) {
+        toast.error("Clipboard is empty.");
+        return;
+      }
+      setJsonText(text);
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed.preset) setSelectedPreset(parsed.preset);
+        toast.success("Pasted JSON from clipboard!");
+      } catch {
+        toast.warning("Pasted text, but invalid JSON syntax.");
+      }
+    } catch {
+      toast.error("Clipboard access denied. Please grant permission.");
+    }
+  }, []);
 
   const handleFormatJson = useCallback(() => {
     if (!jsonText.trim()) return;
@@ -217,7 +279,7 @@ export default function HomePage() {
             if (prev.some((l) => l.message === log.message)) return prev;
             return [...prev, log];
           });
-        }
+        },
       );
 
       setCompilationResult(result);
@@ -269,6 +331,16 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col h-[100dvh] overflow-hidden bg-background text-foreground">
+      {/* Hidden File Input for Clean Mobile & Desktop JSON Import */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".json,application/json"
+        className="hidden"
+        tabIndex={-1}
+        onChange={handleFileUpload}
+      />
+
       {/* 1. TOP NAVBAR */}
       <header className="h-14 border-b border-border px-3 sm:px-4 flex items-center justify-between bg-card shrink-0 z-20 shadow-xs">
         {/* Brand */}
@@ -364,17 +436,18 @@ export default function HomePage() {
             <span className="text-muted-foreground font-semibold text-xs">
               Preset:
             </span>
-            <Select
-              value={selectedPreset}
-              onValueChange={handlePresetChange}
-            >
+            <Select value={selectedPreset} onValueChange={handlePresetChange}>
               <SelectTrigger className="h-7 w-[185px] text-xs bg-card border-border shadow-2xs font-medium">
                 <SelectValue placeholder="Select Exam Preset" />
               </SelectTrigger>
               <SelectContent className="bg-popover border-border">
                 <SelectItem value="ssc_math">General Math (গণিত)</SelectItem>
-                <SelectItem value="ssc_hmath">Higher Math (উচ্চতর গণিত)</SelectItem>
-                <SelectItem value="ssc_physics">Physics (পদার্থবিজ্ঞান)</SelectItem>
+                <SelectItem value="ssc_hmath">
+                  Higher Math (উচ্চতর গণিত)
+                </SelectItem>
+                <SelectItem value="ssc_physics">
+                  Physics (পদার্থবিজ্ঞান)
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -412,9 +485,16 @@ export default function HomePage() {
       <main className="flex-1 p-2 sm:p-3 overflow-hidden bg-background flex flex-col min-h-0">
         {/* DESKTOP RESIZABLE SPLIT PANELS (>= 768px) */}
         <div className="hidden md:block flex-1 h-full min-h-0">
-          <PanelGroup direction="horizontal" className="h-full rounded-lg border border-border overflow-hidden shadow-xs">
+          <PanelGroup
+            direction="horizontal"
+            className="h-full rounded-lg border border-border overflow-hidden shadow-xs"
+          >
             {/* Left Panel: JSON Editor & LaTeX Tabs */}
-            <Panel defaultSize={50} minSize={25} className="flex flex-col bg-card overflow-hidden">
+            <Panel
+              defaultSize={50}
+              minSize={25}
+              className="flex flex-col bg-card overflow-hidden"
+            >
               <div className="p-2 sm:p-2.5 border-b border-border bg-card flex flex-row items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
                   <Tabs
@@ -444,34 +524,60 @@ export default function HomePage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-muted/70 hover:bg-muted font-medium text-foreground/90 hover:text-foreground"
+                    className="size-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-muted/70 hover:bg-muted font-medium text-foreground/90 hover:text-foreground cursor-pointer"
                     onClick={handleFormatJson}
                     title="Format and prettify JSON"
                   >
                     <AlignLeft className="size-3.5 text-primary" />
-                    <span>Format JSON</span>
+                  </Button>
+
+                  {/* Upload JSON Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="size-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-muted/70 hover:bg-muted font-medium text-foreground/90 hover:text-foreground cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Upload & import a .json file directly"
+                  >
+                    <Upload className="size-3.5 text-primary" />
+                  </Button>
+
+                  {/* Paste from Clipboard Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-muted/70 hover:bg-muted font-medium text-foreground/90 hover:text-foreground cursor-pointer"
+                    onClick={handlePasteClipboard}
+                    title="Paste JSON from system clipboard"
+                  >
+                    <ClipboardPaste className="size-3.5 text-primary" />
                   </Button>
 
                   {/* Clear JSON Button */}
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-muted/70 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 font-medium text-foreground/80 transition-colors"
+                    className="size-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-destructive/10 text-destructive hover:bg-destructive/40 hover:text-destructive hover:border-destructive/30 font-medium transition-colors cursor-pointer"
                     onClick={handleClearJson}
                     title="Clear editor to blank exam template"
                   >
                     <Trash2 className="size-3.5" />
-                    <span>Clear</span>
                   </Button>
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   {jsonError ? (
-                    <Badge variant="destructive" className="text-[10px] py-0 h-5 font-semibold">
+                    <Badge
+                      variant="destructive"
+                      className="text-[10px] py-0 h-5 font-semibold"
+                    >
                       Syntax Error
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="text-[10px] py-0 h-5 font-semibold text-accent border-accent/40 bg-accent/10">
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] py-0 h-5 font-semibold text-accent border-accent/40 bg-accent/10"
+                    >
                       Valid Schema
                     </Badge>
                   )}
@@ -497,7 +603,11 @@ export default function HomePage() {
             </PanelResizeHandle>
 
             {/* Right Panel: PDF Viewer */}
-            <Panel defaultSize={50} minSize={25} className="flex flex-col bg-card overflow-hidden">
+            <Panel
+              defaultSize={50}
+              minSize={25}
+              className="flex flex-col bg-card overflow-hidden"
+            >
               <PdfViewerPanel
                 result={compilationResult}
                 isCompiling={isCompiling}
@@ -517,23 +627,47 @@ export default function HomePage() {
                   <Code2 className="size-3.5 text-primary" />
                   JSON Editor
                 </span>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   {jsonError ? (
-                    <Badge variant="destructive" className="text-[10px] py-0 h-5">
+                    <Badge
+                      variant="destructive"
+                      className="text-[10px] py-0 h-5"
+                    >
                       Error
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="text-[10px] py-0 h-5 text-accent border-accent/40 bg-accent/10">
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] py-0 h-5 text-accent border-accent/40 bg-accent/10"
+                    >
                       Valid
                     </Badge>
                   )}
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="h-6 px-1.5 text-xs text-primary gap-1"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Upload JSON file"
+                  >
+                    <Upload className="size-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-1.5 text-xs text-primary gap-1"
+                    onClick={handlePasteClipboard}
+                    title="Paste from clipboard"
+                  >
+                    <ClipboardPaste className="size-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="h-6 px-1.5 text-xs text-primary"
                     onClick={handleFormatJson}
                   >
-                    Format
+                    <AlignLeft className="size-3" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -541,7 +675,7 @@ export default function HomePage() {
                     className="h-6 px-1.5 text-xs text-destructive hover:bg-destructive/10"
                     onClick={handleClearJson}
                   >
-                    Clear
+                    <Trash2 className="size-3" />
                   </Button>
                 </div>
               </div>
@@ -630,10 +764,7 @@ export default function HomePage() {
       />
 
       {/* 6. MODALS & SHEETS */}
-      <AiPromptDialog
-        open={aiPromptOpen}
-        onOpenChange={setAiPromptOpen}
-      />
+      <AiPromptDialog open={aiPromptOpen} onOpenChange={setAiPromptOpen} />
 
       <MobileSettingsSheet
         open={mobileSettingsOpen}
@@ -646,6 +777,8 @@ export default function HomePage() {
         onClearJson={handleClearJson}
         onResetSample={handleLoadSample}
         onOpenAiPrompt={() => setAiPromptOpen(true)}
+        onUploadJson={() => fileInputRef.current?.click()}
+        onPasteClipboard={handlePasteClipboard}
       />
 
       {/* 7. APP INITIAL SPLASH SCREEN WITH 30-DAY PRELOADER */}
