@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -11,8 +10,6 @@ import {
   ExternalLink,
   Cpu,
   Layers,
-  CheckCircle2,
-  FileText,
 } from "lucide-react";
 import type { CompilationResult, CompilerLogEntry } from "@/lib/compiler/types";
 import { PdfCanvasViewer } from "./pdf-canvas-viewer";

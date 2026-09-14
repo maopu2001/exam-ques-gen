@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -23,10 +22,7 @@ import { MobileSettingsSheet } from "@/components/mobile-settings-sheet";
 import { AppSplashScreen } from "@/components/app-splash-screen";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SAMPLE_EXAM_DATA } from "@/lib/sample-data";
-import {
-  compileExamToLatexBundle,
-  type GeneratedExamBundle,
-} from "@/lib/generator";
+import { compileExamToLatexBundle } from "@/lib/generator";
 import { compilerEngine } from "@/lib/compiler/engine";
 import type { CompilationResult, CompilerLogEntry } from "@/lib/compiler/types";
 import {
@@ -44,7 +40,6 @@ import {
   Eye,
   SlidersHorizontal,
   GripVertical,
-  Layers,
   Upload,
   ClipboardPaste,
 } from "lucide-react";
@@ -67,7 +62,18 @@ export default function HomePage() {
   });
   const [activeTab, setActiveTab] = useState<"editor" | "latex">("editor");
   const [mobileTab, setMobileTab] = useState<"json" | "latex" | "pdf">("json");
-  const [selectedPreset, setSelectedPreset] = useState("ssc_math");
+  const [selectedPreset, setSelectedPreset] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved && saved.trim()) {
+          const parsed = JSON.parse(saved);
+          if (parsed.preset) return parsed.preset;
+        }
+      } catch {}
+    }
+    return "ssc_math";
+  });
   const [includeSolutions, setIncludeSolutions] = useState(true);
 
   const [aiPromptOpen, setAiPromptOpen] = useState(false);
@@ -79,30 +85,25 @@ export default function HomePage() {
   const [compilationResult, setCompilationResult] =
     useState<CompilationResult | null>(null);
 
-  const [latexBundle, setLatexBundle] = useState<GeneratedExamBundle | null>(
-    null,
-  );
-  const [jsonError, setJsonError] = useState<string | null>(null);
-  const [isAppReady, setIsAppReady] = useState(false);
-
-  // Restore draft from localStorage on mount (hydration safe)
-  useEffect(() => {
+  // Pure derived state calculated during render (Zero cascading renders)
+  const { latexBundle, jsonError } = useMemo(() => {
+    if (!jsonText.trim()) {
+      return { latexBundle: null, jsonError: null };
+    }
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved && saved.trim()) {
-        setJsonText(saved);
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.preset) {
-            setSelectedPreset(parsed.preset);
-          }
-        } catch {}
+      const parsed = JSON.parse(jsonText);
+      const res = compileExamToLatexBundle(parsed);
+      if (res.success) {
+        return { latexBundle: res.bundle, jsonError: null };
       }
-    } catch {}
-
-    // Signal app readiness for splash screen fade out
-    setIsAppReady(true);
-  }, []);
+      return { latexBundle: null, jsonError: res.errors.join("; ") };
+    } catch (err: any) {
+      return {
+        latexBundle: null,
+        jsonError: err?.message || "Invalid JSON syntax",
+      };
+    }
+  }, [jsonText]);
 
   // Persist draft indefinitely across browser sessions (debounced 500ms for large JSON performance)
   useEffect(() => {
@@ -138,33 +139,11 @@ export default function HomePage() {
           });
           toast.info("Restored compiled PDF from 1-hour cache.");
         }
-      } catch (err) {}
+      } catch {}
     }
 
     restoreCachedPdf();
   }, []);
-
-  // Real-time validation & LaTeX preview update
-  useEffect(() => {
-    if (!jsonText.trim()) {
-      setLatexBundle(null);
-      setJsonError(null);
-      return;
-    }
-    try {
-      const parsed = JSON.parse(jsonText);
-      const res = compileExamToLatexBundle(parsed);
-
-      if (res.success) {
-        setLatexBundle(res.bundle);
-        setJsonError(null);
-      } else {
-        setJsonError(res.errors.join("; "));
-      }
-    } catch (err: any) {
-      setJsonError(err.message || "Invalid JSON syntax");
-    }
-  }, [jsonText]);
 
   const handleFileUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -274,7 +253,6 @@ export default function HomePage() {
         (stage, percent, log) => {
           setProgressPercent(percent);
           setLatestLog(log);
-          // Only add to log history if it's a milestone log (type !== 'info' or explicit milestone)
           setLogs((prev) => {
             if (prev.some((l) => l.message === log.message)) return prev;
             return [...prev, log];
@@ -285,7 +263,6 @@ export default function HomePage() {
       setCompilationResult(result);
       if (result.success) {
         toast.success("Master Exam PDF compiled successfully!");
-        // Cache to IndexedDB (valid for 1 hour across reloads)
         if (result.masterPdfBytes) {
           saveCompiledPdfToCache({
             masterPdfBytes: result.masterPdfBytes,
@@ -309,12 +286,10 @@ export default function HomePage() {
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd/Ctrl + Enter -> Compile PDF
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
         handleCompile();
       }
-      // Cmd/Ctrl + S -> Format JSON
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
         handleFormatJson();
@@ -325,9 +300,7 @@ export default function HomePage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleCompile, handleFormatJson]);
 
-  const handlePreloadComplete = useCallback(() => {
-    setIsAppReady(true);
-  }, []);
+  const handlePreloadComplete = useCallback(() => {}, []);
 
   return (
     <div className="flex flex-col h-[100dvh] overflow-hidden bg-background text-foreground">
@@ -360,126 +333,137 @@ export default function HomePage() {
               Exam Studio
               <Badge
                 variant="outline"
-                className="hidden sm:inline-flex text-[10px] font-semibold py-0 h-4 border-accent/50 text-accent bg-accent/10"
+                className="hidden sm:inline-flex text-[10px] py-0 px-1.5 h-4 font-mono font-normal text-muted-foreground border-border"
               >
-                XeLaTeX Engine
+                v2.5
               </Badge>
             </h1>
-            <p className="hidden sm:block text-[11px] text-muted-foreground font-medium">
-              JSON to NCTB Exam Paper PDF with 2x1 booklet imposition
+            <p className="text-[10px] sm:text-[11px] text-muted-foreground font-medium flex items-center gap-1.5">
+              <span>Bengali XeLaTeX Engine</span>
+              <span className="text-[9px] px-1 rounded bg-primary/10 text-primary font-mono font-semibold">
+                Client WASM
+              </span>
             </p>
           </div>
         </div>
 
-        {/* Right Header Actions */}
+        {/* Global Toolbar Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <ThemeToggle />
-
-          {/* Mobile Settings Drawer Trigger */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-2.5 text-xs gap-1.5 md:hidden border-border"
-            onClick={() => setMobileSettingsOpen(true)}
-            aria-label="Open Settings"
-          >
-            <SlidersHorizontal className="size-3.5" />
-            <span>Options</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs gap-1.5 hidden md:inline-flex border-border/80"
-            onClick={() => setAiPromptOpen(true)}
-          >
-            <Sparkles className="size-3.5 text-yellow-600" />
-            AI Prompt
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs gap-1.5 hidden sm:inline-flex border-border/80"
-            onClick={handleLoadSample}
-          >
-            <RotateCcw className="size-3.5" />
-            Reset
-          </Button>
-
-          {/* Compile Button */}
-          <Button
-            size="sm"
-            className="h-8 text-xs gap-1.5 shadow-sm font-semibold px-3 bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-transform"
-            onClick={handleCompile}
-            disabled={isCompiling}
-          >
-            {isCompiling ? (
-              <RotateCcw className="size-3.5 animate-spin" />
-            ) : (
-              <Play className="size-3.5 fill-current" />
-            )}
-            <span className="hidden sm:inline">
-              {isCompiling ? "Compiling..." : "Compile Exam PDF"}
-            </span>
-            <span className="sm:hidden">
-              {isCompiling ? "Compiling" : "Compile"}
-            </span>
-          </Button>
-        </div>
-      </header>
-
-      {/* 2. DESKTOP OPTIONS TOOLBAR (Hidden on mobile to save screen height) */}
-      <div className="hidden md:flex px-4 py-1.5 border-b border-border bg-muted/40 items-center justify-between text-xs gap-4 shrink-0">
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground font-semibold text-xs">
+          {/* Preset Selector */}
+          <div className="hidden lg:flex items-center gap-1.5 mr-1">
+            <span className="text-xs text-muted-foreground font-medium">
               Preset:
             </span>
             <Select value={selectedPreset} onValueChange={handlePresetChange}>
-              <SelectTrigger className="h-7 w-[185px] text-xs bg-card border-border shadow-2xs font-medium">
+              <SelectTrigger className="h-8 w-44 text-xs font-medium border-border bg-card">
                 <SelectValue placeholder="Select Exam Preset" />
               </SelectTrigger>
-              <SelectContent className="bg-popover border-border">
-                <SelectItem value="ssc_math">General Math (গণিত)</SelectItem>
+              <SelectContent>
+                <SelectItem value="ssc_math">
+                  SSC General Math (গণিত)
+                </SelectItem>
                 <SelectItem value="ssc_hmath">
-                  Higher Math (উচ্চতর গণিত)
+                  SSC Higher Math (উচ্চতর গণিত)
                 </SelectItem>
                 <SelectItem value="ssc_physics">
-                  Physics (পদার্থবিজ্ঞান)
+                  SSC Physics (পদার্থবিজ্ঞান)
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="h-4 w-px bg-border" />
-
-          {/* Solution Attachment Option */}
-          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+          {/* Include Solutions Toggle */}
+          <div className="hidden xl:flex items-center gap-2 mr-2 px-2.5 py-1 rounded-md bg-muted/40 border border-border/60">
+            <label
+              htmlFor="solutions-toggle-desktop"
+              className="text-xs text-muted-foreground font-medium cursor-pointer select-none"
+            >
+              MCQ Solutions
+            </label>
             <input
+              id="solutions-toggle-desktop"
               type="checkbox"
               checked={includeSolutions}
               onChange={(e) => setIncludeSolutions(e.target.checked)}
-              className="rounded border-border text-primary focus:ring-primary size-3.5 cursor-pointer"
+              className="size-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer"
             />
-            <span className="text-foreground/90 font-medium text-xs">
-              Include Solutions
-            </span>
-          </label>
-        </div>
+          </div>
 
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <span>Shortcuts:</span>
-          <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-[10px]">
-            Ctrl+Enter
-          </kbd>
-          <span>Compile</span>
-          <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-[10px]">
-            Ctrl+S
-          </kbd>
-          <span>Format</span>
+          {/* AI Prompt Assistant Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs gap-1.5 font-medium border-border bg-card shadow-2xs hover:bg-accent/10"
+            onClick={() => setAiPromptOpen(true)}
+          >
+            <Sparkles className="size-3.5 text-yellow-600 dark:text-yellow-400 fill-yellow-500/20" />
+            <span className="hidden sm:inline">AI Prompt Assistant</span>
+            <span className="sm:hidden">AI</span>
+          </Button>
+
+          {/* Reset to Sample Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground hidden sm:flex items-center gap-1.5"
+            onClick={handleLoadSample}
+            title="Load sample 5-section exam JSON"
+          >
+            <RotateCcw className="size-3.5" />
+            <span>Sample</span>
+          </Button>
+
+          {/* Theme Toggle */}
+          <ThemeToggle />
+
+          {/* Primary Action Button: Compile PDF */}
+          <Button
+            size="sm"
+            disabled={isCompiling}
+            className="h-8 text-xs gap-1.5 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+            onClick={handleCompile}
+          >
+            {isCompiling ? (
+              <>
+                <span className="size-2 rounded-full bg-primary-foreground animate-ping" />
+                <span>Compiling...</span>
+              </>
+            ) : (
+              <>
+                <Play className="size-3.5 fill-current" />
+                <span>Compile PDF</span>
+              </>
+            )}
+          </Button>
+
+          {/* Mobile Options Sheet Trigger (< 1024px) */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0 lg:hidden"
+            onClick={() => setMobileSettingsOpen(true)}
+            title="Open Exam Options & Settings"
+          >
+            <SlidersHorizontal className="size-4" />
+          </Button>
         </div>
-      </div>
+      </header>
+
+      {/* 2. PROGRESS BANNER WHEN COMPILING */}
+      {isCompiling && (
+        <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 flex items-center justify-between text-xs animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2.5 text-foreground font-medium truncate">
+            <span className="size-2 rounded-full bg-accent animate-pulse shrink-0" />
+            <span className="text-primary font-bold">{progressPercent}%</span>
+            <span className="truncate text-muted-foreground">
+              {latestLog?.message || "Executing LaTeX compilation passes..."}
+            </span>
+          </div>
+          <span className="text-[11px] font-mono text-muted-foreground shrink-0 hidden sm:inline">
+            Stage: {latestLog?.stage || "processing"}
+          </span>
+        </div>
+      )}
 
       {/* 3. MAIN WORKSPACE */}
       <main className="flex-1 p-2 sm:p-3 overflow-hidden bg-background flex flex-col min-h-0">
@@ -524,22 +508,24 @@ export default function HomePage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="size-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-muted/70 hover:bg-muted font-medium text-foreground/90 hover:text-foreground cursor-pointer"
+                    className="h-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-muted/70 hover:bg-muted font-medium text-foreground/90 hover:text-foreground cursor-pointer"
                     onClick={handleFormatJson}
                     title="Format and prettify JSON"
                   >
                     <AlignLeft className="size-3.5 text-primary" />
+                    <span>Format</span>
                   </Button>
 
                   {/* Upload JSON Button */}
                   <Button
                     variant="outline"
                     size="sm"
-                    className="size-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-muted/70 hover:bg-muted font-medium text-foreground/90 hover:text-foreground cursor-pointer"
+                    className="h-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-muted/70 hover:bg-muted font-medium text-foreground/90 hover:text-foreground cursor-pointer"
                     onClick={() => fileInputRef.current?.click()}
                     title="Upload & import a .json file directly"
                   >
                     <Upload className="size-3.5 text-primary" />
+                    <span>Upload</span>
                   </Button>
 
                   {/* Paste from Clipboard Button */}
@@ -551,17 +537,19 @@ export default function HomePage() {
                     title="Paste JSON from system clipboard"
                   >
                     <ClipboardPaste className="size-3.5 text-primary" />
+                    <span>Paste</span>
                   </Button>
 
                   {/* Clear JSON Button */}
                   <Button
                     variant="outline"
                     size="sm"
-                    className="size-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-destructive/10 text-destructive hover:bg-destructive/40 hover:text-destructive hover:border-destructive/30 font-medium transition-colors cursor-pointer"
+                    className="h-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-muted/70 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 font-medium text-foreground/80 transition-colors cursor-pointer"
                     onClick={handleClearJson}
                     title="Clear editor to blank exam template"
                   >
                     <Trash2 className="size-3.5" />
+                    <span>Clear</span>
                   </Button>
                 </div>
 
@@ -651,6 +639,7 @@ export default function HomePage() {
                     title="Upload JSON file"
                   >
                     <Upload className="size-3" />
+                    <span>Upload</span>
                   </Button>
                   <Button
                     variant="ghost"
@@ -660,6 +649,7 @@ export default function HomePage() {
                     title="Paste from clipboard"
                   >
                     <ClipboardPaste className="size-3" />
+                    <span>Paste</span>
                   </Button>
                   <Button
                     variant="ghost"
@@ -667,7 +657,7 @@ export default function HomePage() {
                     className="h-6 px-1.5 text-xs text-primary"
                     onClick={handleFormatJson}
                   >
-                    <AlignLeft className="size-3" />
+                    Format
                   </Button>
                   <Button
                     variant="ghost"
@@ -675,7 +665,7 @@ export default function HomePage() {
                     className="h-6 px-1.5 text-xs text-destructive hover:bg-destructive/10"
                     onClick={handleClearJson}
                   >
-                    <Trash2 className="size-3" />
+                    Clear
                   </Button>
                 </div>
               </div>
@@ -716,16 +706,16 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* 4. MOBILE BOTTOM DOCK (< 768px) */}
-      <div className="md:hidden h-13 border-t border-border bg-card/95 backdrop-blur-sm flex items-center justify-around px-2 shrink-0 z-20 shadow-xs">
+      {/* 4. MOBILE BOTTOM TAB NAVIGATION (< 768px) */}
+      <div className="md:hidden h-14 border-t border-border bg-card flex items-center justify-around px-3 gap-2 shrink-0 z-20">
         <Button
           variant={mobileTab === "json" ? "secondary" : "ghost"}
           size="sm"
           className="flex-1 h-9 gap-1.5 text-xs font-medium relative"
           onClick={() => setMobileTab("json")}
         >
-          <Code2 className="size-4 text-primary" />
-          <span>Editor</span>
+          <Code2 className="size-4" />
+          <span>JSON</span>
           {jsonError && (
             <span className="size-2 rounded-full bg-destructive absolute right-2 top-2" />
           )}

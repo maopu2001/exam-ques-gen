@@ -15,7 +15,7 @@ import type {
   CompilerStage,
 } from "@/lib/compiler/types";
 import { BusyTexRunner, XeLatex, type FileInput } from "texlyre-busytex";
-import { getFontFromDB, saveFontToDB } from "@/lib/compiler/asset-cache";
+import { getFontFromDB } from "@/lib/compiler/asset-cache";
 import { getBinaryAssetFromDB } from "@/lib/compiler/binary-cache";
 import { getStylesFromDB } from "@/lib/compiler/styles-cache";
 import { COMPILER_BINARY_ASSETS } from "@/lib/compiler/bundle-registry";

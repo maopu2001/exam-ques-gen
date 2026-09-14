@@ -19,11 +19,6 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const TIMESTAMP_KEY = "busytex_cache_timestamp_v1";
 const VERSION_KEY = "busytex_compiler_bundle_version";
 
-export const BUSYTEX_CDN_BASE =
-  "https://texlyre.github.io/texlyre-busytex/core/busytex";
-export const KALPURUSH_CDN_FONT_URL =
-  "https://fonts.maateen.me/kalpurush/Kalpurush-v0.258.ttf";
-
 export function formatSpeed(bytesPerSec: number): string {
   if (bytesPerSec <= 0) return "";
   if (bytesPerSec < 1024 * 1024) {
@@ -84,13 +79,6 @@ export function isFastCacheValid(): boolean {
 }
 
 /**
- * Checks if 30-day cache timestamp is still valid.
- */
-export function isCacheValid(): boolean {
-  return isFastCacheValid();
-}
-
-/**
  * Marks cache as valid by saving current timestamp, bundle version,
  * and requesting persistent storage on Android/Mobile devices.
  */
@@ -110,7 +98,7 @@ export function setCacheValid(): void {
 /**
  * Checks if font key exists in IndexedDB without loading raw bytes into memory.
  */
-export async function hasFontInDB(): Promise<boolean> {
+async function hasFontInDB(): Promise<boolean> {
   try {
     const db = await openFontDB();
     return await new Promise<boolean>((resolve) => {

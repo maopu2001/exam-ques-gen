@@ -187,10 +187,10 @@ export const PREAMBLE_TEX = `% =================================================
 \\newcommand{\\fourchoices}[4]{%
   \\par\\vspace{1pt}\\noindent\\hspace*{\\mcqnumw}%
   \\begin{minipage}{\\linewidth-\\mcqnumw}%
-    \\makebox[0.25\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{ক)}}\ #1}%
-    \\makebox[0.25\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{খ)}}\ #2}%
-    \\makebox[0.25\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{গ)}}\ #3}%
-    \\makebox[0.25\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{ঘ)}}\ #4}%
+    \\makebox[0.25\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{ক)}}\\\\ #1}%
+    \\makebox[0.25\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{খ)}}\\\\ #2}%
+    \\makebox[0.25\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{গ)}}\\\\ #3}%
+    \\makebox[0.25\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{ঘ)}}\\\\ #4}%
   \\end{minipage}\\par\\vspace{1.5pt plus 2pt minus 0.5pt}%
 }
 
@@ -198,11 +198,11 @@ export const PREAMBLE_TEX = `% =================================================
 \\newcommand{\\twochoices}[4]{%
   \\par\\vspace{1pt}\\noindent\\hspace*{\\mcqnumw}%
   \\begin{minipage}{\\linewidth-\\mcqnumw}%
-    \\makebox[0.5\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{ক)}}\ #1}%
-    \\makebox[0.5\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{খ)}}\ #2}\\par\\vspace{1.5pt plus 1pt minus 0.5pt}
+    \\makebox[0.5\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{ক)}}\\\\ #1}%
+    \\makebox[0.5\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{খ)}}\\\\ #2}\\par\\vspace{1.5pt plus 1pt minus 0.5pt}
     \\noindent
-    \\makebox[0.5\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{গ)}}\ #3}%
-    \\makebox[0.5\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{ঘ)}}\ #4}%
+    \\makebox[0.5\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{গ)}}\\\\ #3}%
+    \\makebox[0.5\\linewidth][l]{\\makebox[\\mcqlabelw][l]{\\textbf{ঘ)}}\\\\ #4}%
   \\end{minipage}\\par\\vspace{1.5pt plus 2pt minus 0.5pt}%
 }
 
@@ -210,10 +210,10 @@ export const PREAMBLE_TEX = `% =================================================
 \\newcommand{\\singlechoice}[4]{%
   \\par\\vspace{1pt}\\noindent\\hspace*{\\mcqnumw}%
   \\begin{minipage}{\\linewidth-\\mcqnumw}%
-    \\makebox[\\mcqlabelw][l]{\\textbf{ক)}}\ #1\\par\\vspace{1pt}
-    \\noindent\\makebox[\\mcqlabelw][l]{\\textbf{খ)}}\ #2\\par\\vspace{1pt}
-    \\noindent\\makebox[\\mcqlabelw][l]{\\textbf{গ)}}\ #3\\par\\vspace{1pt}
-    \\noindent\\makebox[\\mcqlabelw][l]{\\textbf{ঘ)}}\ #4%
+    \\makebox[\\mcqlabelw][l]{\\textbf{ক)}}\\\\ #1\\par\\vspace{1pt}
+    \\noindent\\makebox[\\mcqlabelw][l]{\\textbf{খ)}}\\\\ #2\\par\\vspace{1pt}
+    \\noindent\\makebox[\\mcqlabelw][l]{\\textbf{গ)}}\\\\ #3\\par\\vspace{1pt}
+    \\noindent\\makebox[\\mcqlabelw][l]{\\textbf{ঘ)}}\\\\ #4%
   \\end{minipage}\\par\\vspace{1.5pt plus 2pt minus 0.5pt}%
 }
 
@@ -225,10 +225,10 @@ export const PREAMBLE_TEX = `% =================================================
 \\newlength{\\maxoptwidth}
 
 \\newcommand{\\autochoices}[4]{%
-  \\settowidth{\\optAwidth}{\\textbf{ক)}\ #1}%
-  \\settowidth{\\optBwidth}{\\textbf{খ)}\ #2}%
-  \\settowidth{\\optCwidth}{\\textbf{গ)}\ #3}%
-  \\settowidth{\\optDwidth}{\\textbf{ঘ)}\ #4}%
+  \\settowidth{\\optAwidth}{\\textbf{ক)}\\\\ #1}%
+  \\settowidth{\\optBwidth}{\\textbf{খ)}\\\\ #2}%
+  \\settowidth{\\optCwidth}{\\textbf{গ)}\\\\ #3}%
+  \\settowidth{\\optDwidth}{\\textbf{ঘ)}\\\\ #4}%
   \\setlength{\\maxoptwidth}{\\optAwidth}%
   \\ifdim\\optBwidth>\\maxoptwidth \\setlength{\\maxoptwidth}{\\optBwidth}\\fi
   \\ifdim\\optCwidth>\\maxoptwidth \\setlength{\\maxoptwidth}{\\optCwidth}\\fi

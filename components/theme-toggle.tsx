@@ -3,19 +3,23 @@
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+const emptySubscribe = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 export function ThemeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const { setTheme, resolvedTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
 
   if (!mounted) {
     return (
-      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ">
+      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
         <Sun className="size-4 opacity-50" />
       </Button>
     );

@@ -2,7 +2,7 @@
  * Calculates standard 2x1 folded booklet page signature ordering
  * for any number of pages.
  */
-export function getBookletOrder(numPages: number): (number | null)[] {
+function getBookletOrder(numPages: number): (number | null)[] {
   const total = Math.ceil(numPages / 4) * 4;
   const pages: (number | null)[] = Array.from({ length: numPages }, (_, i) => i + 1);
   while (pages.length < total) {

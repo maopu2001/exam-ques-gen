@@ -1,4 +1,4 @@
-export const BANGLA_DIGITS = "০১২৩৪৫৬৭৮৯";
+const BANGLA_DIGITS = "০১২৩৪৫৬৭৮৯";
 export const SUBQ_LABELS = ["ক", "খ", "গ", "ঘ"];
 export const THREE_SUBQUESTION_MARKS = ["২", "৪", "৪"];
 export const FOUR_SUBQUESTION_MARKS = ["১", "২", "৩", "৪"];

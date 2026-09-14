@@ -94,7 +94,7 @@ export function generateConfigTex(data: ExamData, options: CompileOptions = {}):
 `;
 }
 
-export function formatCqQuestion(q: CqQuestion, autoNum?: string): string {
+function formatCqQuestion(q: CqQuestion, autoNum?: string): string {
   const lines: string[] = ["\\begin{cqitem}"];
   const qNum = q.number || autoNum || "";
 
@@ -197,7 +197,7 @@ export function generateSqTex(data: ExamData): string {
   return lines.join("\n");
 }
 
-export interface PreparedMcq {
+interface PreparedMcq {
   origIndex: number;
   qNum: string;
   newNumber: string;
@@ -209,7 +209,7 @@ export interface PreparedMcq {
   context?: McqQuestion["context"];
 }
 
-export function prepareNormalizedMcqs(
+function prepareNormalizedMcqs(
   data: ExamData,
   options: CompileOptions = {}
 ): PreparedMcq[] {

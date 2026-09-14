@@ -1,4 +1,4 @@
-export interface StyleAsset {
+interface StyleAsset {
   filename: string;
   url?: string;
   fallback?: string;
@@ -7,7 +7,7 @@ export interface StyleAsset {
 // Direct files are used only where the package repository exposes that file.
 // makecell and booktabs publish .dtx sources on CTAN, so these small fallbacks
 // cover the commands used by this application without pretending a .sty URL exists.
-export const STYLE_ASSETS: StyleAsset[] = [
+const STYLE_ASSETS: StyleAsset[] = [
   {
     filename: "makecell.sty",
     fallback: `\\NeedsTeXFormat{LaTeX2e}\n\\ProvidesPackage{makecell}[2025/01/01 Exam Studio compatibility]\n\\newcommand{\\makecell}[2][]{\\begin{tabular}{c}#2\\end{tabular}}\n`,

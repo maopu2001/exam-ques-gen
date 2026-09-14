@@ -32,14 +32,14 @@ export interface CompilationResult {
   durationMs: number;
 }
 
-export interface WorkerCompileRequest {
+interface WorkerCompileRequest {
   type: "COMPILE_EXAM";
   id: string;
   jsonInput: unknown;
   options?: CompileOptions;
 }
 
-export interface WorkerProgressMessage {
+interface WorkerProgressMessage {
   type: "PROGRESS";
   id: string;
   stage: CompilerStage;
@@ -47,13 +47,13 @@ export interface WorkerProgressMessage {
   log: CompilerLogEntry;
 }
 
-export interface WorkerSuccessMessage {
+interface WorkerSuccessMessage {
   type: "SUCCESS";
   id: string;
   result: CompilationResult;
 }
 
-export interface WorkerErrorMessage {
+interface WorkerErrorMessage {
   type: "ERROR";
   id: string;
   error: string;

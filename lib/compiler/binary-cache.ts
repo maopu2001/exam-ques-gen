@@ -7,7 +7,7 @@ import {
 const DB_NAME = "BusyTexBinaryDB";
 const STORE_NAME = "assets";
 const DB_VERSION = 1;
-export const VERSION_KEY = "busytex_compiler_bundle_version";
+const VERSION_KEY = "busytex_compiler_bundle_version";
 
 function openBinaryDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {

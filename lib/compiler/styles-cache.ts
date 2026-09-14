@@ -71,10 +71,6 @@ export async function getStylesFromDB(): Promise<Record<string, string>> {
   }
 }
 
-export function hasAllStyles(styles: Record<string, string>): boolean {
-  return STYLE_FILENAMES.every((filename) => Boolean(styles[filename]?.trim()));
-}
-
 export async function hasAllStylesInDB(): Promise<boolean> {
   try {
     const db = await openStylesDB();

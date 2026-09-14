@@ -356,7 +356,7 @@ function PdfPageCanvas({
 
         const task = page.render(renderContext);
         await task.promise;
-      } catch (err: any) {
+      } catch {
         // Suppress cancellation exceptions
       }
     }

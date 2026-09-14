@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState, useRef } from "react";
+import { useRef, useSyncExternalStore } from "react";
 import { MobileSymbolBar } from "./mobile-symbol-bar";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
@@ -22,16 +22,25 @@ interface JsonEditorPanelProps {
   error?: string | null;
 }
 
-export function JsonEditorPanel({ value, onChange, error }: JsonEditorPanelProps) {
+const emptySubscribe = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
+export function JsonEditorPanel({
+  value,
+  onChange,
+  error,
+}: JsonEditorPanelProps) {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
   const editorRef = useRef<any>(null);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const editorTheme = mounted && resolvedTheme === "light" ? "light" : "vs-dark";
+  const editorTheme =
+    mounted && resolvedTheme === "light" ? "light" : "vs-dark";
 
   const handleInsertSymbol = (symbolText: string) => {
     if (editorRef.current) {
@@ -69,8 +78,8 @@ export function JsonEditorPanel({ value, onChange, error }: JsonEditorPanelProps
             automaticLayout: true,
             scrollBeyondLastLine: false,
             tabSize: 2,
-            formatOnPaste: true,
-            formatOnType: true,
+            formatOnPaste: false,
+            formatOnType: false,
             folding: true,
             padding: { top: 8, bottom: 8 },
           }}

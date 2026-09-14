@@ -1,4 +1,4 @@
-import { ExamData } from "./generator";
+import type { ExamData } from "./generator";
 
 export const SAMPLE_EXAM_DATA: ExamData = {
   preset: "ssc_math",

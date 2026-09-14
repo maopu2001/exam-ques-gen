@@ -7,13 +7,13 @@ import type {
 } from "./types";
 import { isAllDataCached, setCacheValid } from "./asset-cache";
 
-export type ProgressCallback = (
+type ProgressCallback = (
   stage: CompilerStage,
   percent: number,
   log: CompilerLogEntry,
 ) => void;
 
-export type WarmupProgressCallback = (progress: {
+type WarmupProgressCallback = (progress: {
   percent: number;
   message: string;
   speed?: string;

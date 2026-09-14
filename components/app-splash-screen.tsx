@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { compilerEngine } from "@/lib/compiler/engine";
 import { isFastCacheValid } from "@/lib/compiler/asset-cache";
@@ -10,9 +10,6 @@ interface AppSplashScreenProps {
 }
 
 export function AppSplashScreen({ onPreloadComplete }: AppSplashScreenProps) {
-  const onCompleteRef = useRef(onPreloadComplete);
-  onCompleteRef.current = onPreloadComplete;
-
   const [shouldRender, setShouldRender] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [preloadState, setPreloadState] = useState<{
@@ -28,22 +25,20 @@ export function AppSplashScreen({ onPreloadComplete }: AppSplashScreenProps) {
   useEffect(() => {
     let isCancelled = false;
 
-    // 1. Fast Path: If 30-day cache is already valid, dismiss splash immediately (< 0.2ms)
-    // and load/warmup assets in the background without blocking user interface.
     if (isFastCacheValid()) {
-      onCompleteRef.current?.();
-      setIsFadingOut(true);
-      const timer = setTimeout(() => setShouldRender(false), 200);
+      onPreloadComplete?.();
+      const fadeTimer = setTimeout(() => setIsFadingOut(true), 100);
+      const hideTimer = setTimeout(() => setShouldRender(false), 400);
 
       // Non-blocking background verification and pre-warm
       compilerEngine.warmup().catch(() => {});
 
       return () => {
-        clearTimeout(timer);
+        clearTimeout(fadeTimer);
+        clearTimeout(hideTimer);
       };
     }
 
-    // 2. Cold Path: First launch or cache expired — show progress bar while downloading bundle
     async function warmUpAssets() {
       try {
         await compilerEngine.warmup((prog) => {
@@ -59,7 +54,7 @@ export function AppSplashScreen({ onPreloadComplete }: AppSplashScreenProps) {
         // Fallback gracefully on warm-up warnings
       } finally {
         if (!isCancelled) {
-          onCompleteRef.current?.();
+          onPreloadComplete?.();
           setTimeout(() => setIsFadingOut(true), 300);
           setTimeout(() => setShouldRender(false), 800);
         }
@@ -71,7 +66,7 @@ export function AppSplashScreen({ onPreloadComplete }: AppSplashScreenProps) {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [onPreloadComplete]);
 
   if (!shouldRender) return null;
 

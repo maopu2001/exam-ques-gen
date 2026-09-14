@@ -8,7 +8,6 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -22,8 +21,6 @@ import {
   RotateCcw,
   AlignLeft,
   Trash2,
-  CheckCircle2,
-  FileText,
   Upload,
   ClipboardPaste,
 } from "lucide-react";

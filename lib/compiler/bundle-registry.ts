@@ -13,6 +13,4 @@ export const COMPILER_BINARY_ASSETS = [
   "packages/texlive-basic.data",
 ] as const;
 
-export const COMPILER_FONT_ASSET = "font/Kalpurush.ttf";
-
 export type CompilerBinaryAsset = (typeof COMPILER_BINARY_ASSETS)[number];

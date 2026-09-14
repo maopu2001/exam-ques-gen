@@ -3,7 +3,6 @@ import path from "node:path";
 import {
   compileExamToLatexBundle,
   toBanglaNum,
-  getBookletOrder,
   formatBookletOrderForLatex,
 } from "@/lib/generator";
 import {

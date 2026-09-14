@@ -1,0 +1,15 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignoreBinaries": ["latex"],
+  "rules": {
+    "exports": "error",
+    "types": "error",
+    "dependencies": "error"
+  },
+  "entry": [
+    "app/**/*.{ts,tsx}",
+    "components/ui/**/*.{ts,tsx}",
+    "scripts/**/*.{ts,mjs,js}",
+    "workers/**/*.{ts,js}"
+  ]
+}

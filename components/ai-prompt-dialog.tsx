@@ -17,7 +17,7 @@ interface AiPromptDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export const AI_PROMPT_TEXT = `You are an expert LaTeX exam parser and JSON formatting engine. Your task is to extract, convert, and format exam questions into a single valid, well-structured JSON document for an automated XeLaTeX exam compilation pipeline.
+const AI_PROMPT_TEXT = `You are an expert LaTeX exam parser and JSON formatting engine. Your task is to extract, convert, and format exam questions into a single valid, well-structured JSON document for an automated XeLaTeX exam compilation pipeline.
 
 ### OUTPUT REQUIREMENTS:
 1. Return ONLY pure, valid JSON inside a single \`\`\`json ... \`\`\` code block.

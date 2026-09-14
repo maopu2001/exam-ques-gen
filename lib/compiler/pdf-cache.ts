@@ -43,7 +43,9 @@ function openDatabase(): Promise<IDBDatabase> {
 /**
  * Saves compiled PDF result into browser IndexedDB with current timestamp.
  */
-export async function saveCompiledPdfToCache(record: Omit<CachedPdfRecord, "timestamp">): Promise<void> {
+export async function saveCompiledPdfToCache(
+  record: Omit<CachedPdfRecord, "timestamp">,
+): Promise<void> {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
@@ -59,7 +61,7 @@ export async function saveCompiledPdfToCache(record: Omit<CachedPdfRecord, "time
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
-  } catch (err) {}
+  } catch {}
 }
 
 /**
@@ -68,7 +70,7 @@ export async function saveCompiledPdfToCache(record: Omit<CachedPdfRecord, "time
 export async function getCachedCompiledPdf(): Promise<CachedPdfRecord | null> {
   try {
     const db = await openDatabase();
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, "readonly");
       const store = tx.objectStore(STORE_NAME);
 
@@ -89,9 +91,9 @@ export async function getCachedCompiledPdf(): Promise<CachedPdfRecord | null> {
           resolve(result);
         }
       };
-      request.onerror = () => reject(request.error);
+      request.onerror = () => resolve(null);
     });
-  } catch (err) {
+  } catch {
     return null;
   }
 }
@@ -99,7 +101,7 @@ export async function getCachedCompiledPdf(): Promise<CachedPdfRecord | null> {
 /**
  * Manually clears the cached PDF from IndexedDB.
  */
-export async function clearCachedCompiledPdf(): Promise<void> {
+async function clearCachedCompiledPdf(): Promise<void> {
   try {
     const db = await openDatabase();
     return new Promise((resolve, reject) => {
@@ -109,5 +111,5 @@ export async function clearCachedCompiledPdf(): Promise<void> {
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
-  } catch (err) {}
+  } catch {}
 }
