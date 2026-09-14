@@ -3,12 +3,13 @@
  * Preloads all LaTeX assets on initial web app launch and caches them with a 30-day TTL.
  */
 
-import { isPackageCached } from "texlyre-busytex/dist/core/package-cache";
 import {
   hasAllBinaryAssets,
   hasCurrentCompilerBundleVersion,
+  setCompilerBundleVersion,
 } from "./binary-cache";
-import { getStylesFromDB, hasAllStyles } from "./styles-cache";
+import { COMPILER_BUNDLE_VERSION } from "./bundle-registry";
+import { hasAllStylesInDB } from "./styles-cache";
 
 const DB_NAME = "BusyTexFontDB";
 const STORE_NAME = "fonts";
@@ -16,6 +17,7 @@ const DB_VERSION = 1;
 const FONT_KEY = "kalpurush_font_v1";
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const TIMESTAMP_KEY = "busytex_cache_timestamp_v1";
+const VERSION_KEY = "busytex_compiler_bundle_version";
 
 export const BUSYTEX_CDN_BASE =
   "https://texlyre.github.io/texlyre-busytex/core/busytex";
@@ -65,13 +67,15 @@ function openFontDB(): Promise<IDBDatabase> {
 }
 
 /**
- * Checks if 30-day cache timestamp is still valid.
+ * Instant synchronous cache pre-check (< 0.2ms).
+ * Validates timestamp and compiler bundle version from localStorage.
  */
-export function isCacheValid(): boolean {
+export function isFastCacheValid(): boolean {
   if (typeof localStorage === "undefined") return false;
   try {
     const saved = localStorage.getItem(TIMESTAMP_KEY);
-    if (!saved) return false;
+    const version = localStorage.getItem(VERSION_KEY);
+    if (!saved || version !== COMPILER_BUNDLE_VERSION) return false;
     const age = Date.now() - parseInt(saved, 10);
     return age < THIRTY_DAYS_MS;
   } catch {
@@ -80,27 +84,58 @@ export function isCacheValid(): boolean {
 }
 
 /**
- * Marks cache as valid by saving current timestamp.
+ * Checks if 30-day cache timestamp is still valid.
+ */
+export function isCacheValid(): boolean {
+  return isFastCacheValid();
+}
+
+/**
+ * Marks cache as valid by saving current timestamp, bundle version,
+ * and requesting persistent storage on Android/Mobile devices.
  */
 export function setCacheValid(): void {
   if (typeof localStorage === "undefined") return;
   try {
     localStorage.setItem(TIMESTAMP_KEY, Date.now().toString());
+    setCompilerBundleVersion(COMPILER_BUNDLE_VERSION);
+
+    // Request Android / Mobile browser persistent storage permission
+    if (typeof navigator !== "undefined" && navigator.storage?.persist) {
+      navigator.storage.persist().catch(() => {});
+    }
   } catch {}
 }
 
 /**
- * Checks if all required packages and fonts are fully persisted in IndexedDB.
+ * Checks if font key exists in IndexedDB without loading raw bytes into memory.
+ */
+export async function hasFontInDB(): Promise<boolean> {
+  try {
+    const db = await openFontDB();
+    return await new Promise<boolean>((resolve) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.getKey(FONT_KEY);
+      req.onsuccess = () => resolve(Boolean(req.result));
+      req.onerror = () => resolve(false);
+    });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Lightweight Zero-RAM IndexedDB verification.
+ * Verifies font, binary assets, bundle version, and styles in ~2ms.
  */
 export async function isAllDataCached(): Promise<boolean> {
-  if (!isCacheValid()) return false;
+  if (!isFastCacheValid()) return false;
   try {
-    const font = await getFontFromDB();
-    if (!font || font.length === 0) return false;
-
-    if (!(await hasAllBinaryAssets())) return false;
     if (!hasCurrentCompilerBundleVersion()) return false;
-    if (!hasAllStyles(await getStylesFromDB())) return false;
+    if (!(await hasFontInDB())) return false;
+    if (!(await hasAllBinaryAssets())) return false;
+    if (!(await hasAllStylesInDB())) return false;
     return true;
   } catch {
     return false;

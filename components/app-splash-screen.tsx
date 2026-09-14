@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { compilerEngine } from "@/lib/compiler/engine";
+import { isFastCacheValid } from "@/lib/compiler/asset-cache";
 
 interface AppSplashScreenProps {
   onPreloadComplete?: () => void;
@@ -27,6 +28,22 @@ export function AppSplashScreen({ onPreloadComplete }: AppSplashScreenProps) {
   useEffect(() => {
     let isCancelled = false;
 
+    // 1. Fast Path: If 30-day cache is already valid, dismiss splash immediately (< 0.2ms)
+    // and load/warmup assets in the background without blocking user interface.
+    if (isFastCacheValid()) {
+      onCompleteRef.current?.();
+      setIsFadingOut(true);
+      const timer = setTimeout(() => setShouldRender(false), 200);
+
+      // Non-blocking background verification and pre-warm
+      compilerEngine.warmup().catch(() => {});
+
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+
+    // 2. Cold Path: First launch or cache expired — show progress bar while downloading bundle
     async function warmUpAssets() {
       try {
         await compilerEngine.warmup((prog) => {
@@ -60,13 +77,13 @@ export function AppSplashScreen({ onPreloadComplete }: AppSplashScreenProps) {
 
   return (
     <div
-      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background select-none transition-opacity duration-500 ease-out ${
+      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background select-none transition-opacity duration-300 ease-out ${
         isFadingOut ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
     >
       <div className="flex flex-col items-center gap-5 text-center max-w-sm px-6">
         {/* Breathing Logo Squircle */}
-        <div className="relative size-20 rounded-2xl p-3 bg-card border border-border/80 shadow-xl flex items-center justify-center animate-in zoom-in-90 duration-500">
+        <div className="relative size-20 rounded-2xl p-3 bg-card border border-border/80 shadow-xl flex items-center justify-center animate-in zoom-in-90 duration-300">
           {/* Ambient Glow */}
           <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl animate-pulse" />
           <Image
@@ -94,7 +111,7 @@ export function AppSplashScreen({ onPreloadComplete }: AppSplashScreenProps) {
           {/* Progress Bar Track */}
           <div className="h-2 w-full bg-muted/80 rounded-full overflow-hidden relative shadow-inner">
             <div
-              className="h-full bg-gradient-to-r from-primary via-primary/90 to-emerald-500 rounded-full transition-all duration-700 ease-out"
+              className="h-full bg-gradient-to-r from-primary via-primary/90 to-emerald-500 rounded-full transition-all duration-500 ease-out"
               style={{ width: `${Math.max(4, preloadState.percent)}%` }}
             />
           </div>

@@ -7,11 +7,17 @@ import {
 const DB_NAME = "BusyTexBinaryDB";
 const STORE_NAME = "assets";
 const DB_VERSION = 1;
-const VERSION_KEY = "busytex_compiler_bundle_version";
+export const VERSION_KEY = "busytex_compiler_bundle_version";
 
 function openBinaryDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const idb = typeof indexedDB !== "undefined" ? indexedDB : null;
+    const idb =
+      typeof indexedDB !== "undefined"
+        ? indexedDB
+        : typeof self !== "undefined"
+          ? (self as any).indexedDB
+          : null;
+
     if (!idb) {
       reject(new Error("IndexedDB not available in current environment"));
       return;
@@ -43,8 +49,17 @@ export async function saveBinaryAssetsToDB(
     transaction.onabort = () => reject(transaction.error);
   });
   db.close();
+
   if (typeof localStorage !== "undefined") {
     localStorage.setItem(VERSION_KEY, bundleVersion);
+  }
+}
+
+export function setCompilerBundleVersion(
+  version = COMPILER_BUNDLE_VERSION,
+): void {
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(VERSION_KEY, version);
   }
 }
 
@@ -76,10 +91,27 @@ export async function getBinaryAssetFromDB(
   }
 }
 
+/**
+ * Lightweight Zero-RAM key verification.
+ * Avoids loading 125MB of binary buffers into JS memory during startup cache checks.
+ */
 export async function hasAllBinaryAssets(): Promise<boolean> {
-  for (const path of COMPILER_BINARY_ASSETS) {
-    const asset = await getBinaryAssetFromDB(path);
-    if (!asset || asset.length === 0) return false;
+  try {
+    const db = await openBinaryDB();
+    return await new Promise((resolve) => {
+      const transaction = db.transaction(STORE_NAME, "readonly");
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.getAllKeys();
+      request.onsuccess = () => {
+        const keys = new Set((request.result as string[]) || []);
+        const allPresent = COMPILER_BINARY_ASSETS.every((path) =>
+          keys.has(path),
+        );
+        resolve(allPresent);
+      };
+      request.onerror = () => resolve(false);
+    });
+  } catch {
+    return false;
   }
-  return true;
 }

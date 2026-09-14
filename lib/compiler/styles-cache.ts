@@ -6,7 +6,13 @@ const DB_VERSION = 1;
 
 function openStylesDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const idb = typeof indexedDB !== "undefined" ? indexedDB : null;
+    const idb =
+      typeof indexedDB !== "undefined"
+        ? indexedDB
+        : typeof self !== "undefined"
+          ? (self as any).indexedDB
+          : null;
+
     if (!idb) {
       reject(new Error("IndexedDB not available in current environment"));
       return;
@@ -67,4 +73,25 @@ export async function getStylesFromDB(): Promise<Record<string, string>> {
 
 export function hasAllStyles(styles: Record<string, string>): boolean {
   return STYLE_FILENAMES.every((filename) => Boolean(styles[filename]?.trim()));
+}
+
+export async function hasAllStylesInDB(): Promise<boolean> {
+  try {
+    const db = await openStylesDB();
+    return await new Promise<boolean>((resolve) => {
+      const transaction = db.transaction(STORE_NAME, "readonly");
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.getAllKeys();
+      request.onsuccess = () => {
+        const keys = new Set((request.result as string[]) || []);
+        const allPresent = STYLE_FILENAMES.every((filename) =>
+          keys.has(filename),
+        );
+        resolve(allPresent);
+      };
+      request.onerror = () => resolve(false);
+    });
+  } catch {
+    return false;
+  }
 }
