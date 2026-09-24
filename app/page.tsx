@@ -393,12 +393,11 @@ export default function HomePage() {
           <Button
             variant="outline"
             size="sm"
-            className="h-8 text-xs gap-1.5 font-medium border-border bg-card shadow-2xs hover:bg-accent/10 hover:text-foreground"
+            className="hidden sm:flex h-8 text-xs gap-1.5 font-medium border-border bg-card shadow-2xs hover:bg-accent/10 hover:text-foreground"
             onClick={() => setAiPromptOpen(true)}
           >
             <Sparkles className="size-3.5 text-yellow-600 dark:text-yellow-400 fill-yellow-500/20" />
-            <span className="hidden sm:inline">AI Prompt Assistant</span>
-            <span className="sm:hidden">AI</span>
+            <span>AI Prompt Assistant</span>
           </Button>
 
           {/* Reset to Sample Button */}
@@ -420,18 +419,18 @@ export default function HomePage() {
           <Button
             size="sm"
             disabled={isCompiling}
-            className="h-8 text-xs gap-1.5 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+            className="h-8 w-8 sm:w-auto text-xs gap-1.5 font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
             onClick={handleCompile}
           >
             {isCompiling ? (
               <>
                 <span className="size-2 rounded-full bg-primary-foreground animate-ping" />
-                <span>Compiling...</span>
+                <span className="hidden sm:inline">Compiling...</span>
               </>
             ) : (
               <>
                 <Play className="size-3.5 fill-current" />
-                <span>Compile PDF</span>
+                <span className="hidden sm:inline">Compile PDF</span>
               </>
             )}
           </Button>
@@ -532,24 +531,22 @@ export default function HomePage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-muted/70 hover:bg-muted font-medium text-foreground/90 hover:text-foreground cursor-pointer"
+                    className="size-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-muted/70 hover:bg-muted font-medium text-foreground/90 hover:text-foreground cursor-pointer"
                     onClick={handlePasteClipboard}
                     title="Paste JSON from system clipboard"
                   >
                     <ClipboardPaste className="size-3.5 text-primary" />
-                    <span>Paste</span>
                   </Button>
 
                   {/* Clear JSON Button */}
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-muted/70 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 font-medium text-foreground/80 transition-colors cursor-pointer"
+                    className="size-8 px-2.5 text-xs gap-1.5 shrink-0 rounded-lg border-border bg-muted/70 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 font-medium text-destructive sm:text-foreground/80 transition-colors cursor-pointer"
                     onClick={handleClearJson}
                     title="Clear editor to blank exam template"
                   >
                     <Trash2 className="size-3.5" />
-                    <span>Clear</span>
                   </Button>
                 </div>
 
@@ -635,29 +632,10 @@ export default function HomePage() {
                     variant="ghost"
                     size="sm"
                     className="h-6 px-1.5 text-xs text-primary gap-1"
-                    onClick={() => fileInputRef.current?.click()}
-                    title="Upload JSON file"
-                  >
-                    <Upload className="size-3" />
-                    <span>Upload</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-1.5 text-xs text-primary gap-1"
                     onClick={handlePasteClipboard}
                     title="Paste from clipboard"
                   >
                     <ClipboardPaste className="size-3" />
-                    <span>Paste</span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-1.5 text-xs text-primary"
-                    onClick={handleFormatJson}
-                  >
-                    Format
                   </Button>
                   <Button
                     variant="ghost"
@@ -665,7 +643,7 @@ export default function HomePage() {
                     className="h-6 px-1.5 text-xs text-destructive hover:bg-destructive/10"
                     onClick={handleClearJson}
                   >
-                    Clear
+                    <Trash2 className="size-3" />
                   </Button>
                 </div>
               </div>

@@ -20,9 +20,7 @@ import {
   Sparkles,
   RotateCcw,
   AlignLeft,
-  Trash2,
   Upload,
-  ClipboardPaste,
 } from "lucide-react";
 
 interface MobileSettingsSheetProps {
@@ -48,11 +46,9 @@ export function MobileSettingsSheet({
   includeSolutions,
   onIncludeSolutionsChange,
   onFormatJson,
-  onClearJson,
   onResetSample,
   onOpenAiPrompt,
   onUploadJson,
-  onPasteClipboard,
 }: MobileSettingsSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -135,38 +131,12 @@ export function MobileSettingsSheet({
             size="sm"
             className="h-9 text-xs gap-1.5 justify-start px-3"
             onClick={() => {
-              onPasteClipboard?.();
-              onOpenChange(false);
-            }}
-          >
-            <ClipboardPaste className="size-3.5 text-primary" />
-            Paste Clipboard
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 text-xs gap-1.5 justify-start px-3"
-            onClick={() => {
               onFormatJson();
               onOpenChange(false);
             }}
           >
             <AlignLeft className="size-3.5 text-primary" />
             Format JSON
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 text-xs gap-1.5 justify-start px-3 text-destructive hover:bg-destructive/10"
-            onClick={() => {
-              onClearJson();
-              onOpenChange(false);
-            }}
-          >
-            <Trash2 className="size-3.5" />
-            Clear Editor
           </Button>
 
           <Button
