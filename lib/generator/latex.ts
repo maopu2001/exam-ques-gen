@@ -209,6 +209,12 @@ interface PreparedMcq {
   context?: McqQuestion["context"];
 }
 
+function sanitizeInlineMath(s: string): string {
+  return s
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, inner) => `$${inner.trim()}$`)
+    .replace(/\$\$([\s\S]*?)\$\$/g, (_, inner) => `$${inner.trim()}$`);
+}
+
 function prepareNormalizedMcqs(
   data: ExamData,
   options: CompileOptions = {}
@@ -219,7 +225,7 @@ function prepareNormalizedMcqs(
     qNum: q.number || toBanglaNum(idx + 1),
     newNumber: q.number || toBanglaNum(idx + 1),
     qText: q.q || q.text || "",
-    choices: q.opts || q.choices || [],
+    choices: (q.opts || q.choices || []).map(sanitizeInlineMath),
     ans: q.ans || q.answer || "",
     exp: q.exp || q.explanation || "",
     stems: q.stems,
@@ -308,7 +314,7 @@ export function generateSolTex(data: ExamData, options: CompileOptions = {}): st
   for (let tblIdx = 0; tblIdx < tables.length; tblIdx++) {
     const tblData = tables[tblIdx];
     lines.push("\\noindent");
-    lines.push("\\begin{tabular}{|c|c|>{\\raggedright\\arraybackslash}p{6.4cm}|}");
+    lines.push("\\begin{tabular}{|c|l|>{\\raggedright\\arraybackslash}p{6.4cm}|}");
     lines.push("\\hline");
     lines.push("\\textbf{প্রশ্ন} & \\textbf{উত্তর} & \\textbf{সংক্ষিপ্ত ব্যাখ্যা / হিসাব} \\\\ \\hline");
 

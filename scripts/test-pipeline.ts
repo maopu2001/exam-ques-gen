@@ -77,7 +77,7 @@ async function runTests() {
   if (!bundle.mcqTex.includes("\\begin{mcqitem}")) {
     throw new Error("Missing \\begin{mcqitem} in mcq_questions.tex");
   }
-  if (!bundle.solTex.includes("\\begin{tabular}{|c|c|>{\\raggedright\\arraybackslash}p{6.4cm}|}")) {
+  if (!bundle.solTex.includes("\\begin{tabular}{|c|l|>{\\raggedright\\arraybackslash}p{6.4cm}|}")) {
     throw new Error("Missing Solutions tabular environment in mcq_solutions.tex");
   }
 
