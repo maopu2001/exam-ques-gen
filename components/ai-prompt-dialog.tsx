@@ -8,8 +8,18 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Sparkles } from "lucide-react";
+import {
+  Copy,
+  Check,
+  Sparkles,
+  BookOpen,
+  Atom,
+  Calculator,
+  Wand2,
+  FileCode2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface AiPromptDialogProps {
@@ -17,7 +27,14 @@ interface AiPromptDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const AI_PROMPT_TEXT = `You are an expert LaTeX exam parser and JSON formatting engine. Your task is to extract, convert, and format exam questions into a single valid, well-structured JSON document for an automated XeLaTeX exam compilation pipeline.
+type Mode = "generate" | "format";
+type SubjectId = "ssc_physics" | "ssc_hmath" | "ssc_math";
+
+// ============================================================================
+// 1. XELATEX FORMATTER PROMPT
+// ============================================================================
+
+const ORIGINAL_XELATEX_FORMATTER_PROMPT = `You are an expert LaTeX exam parser and JSON formatting engine. Your task is to extract, convert, and format exam questions into a single valid, well-structured JSON document for an automated XeLaTeX exam compilation pipeline.
 
 ### OUTPUT REQUIREMENTS:
 1. Return ONLY pure, valid JSON inside a single \`\`\`json ... \`\`\` code block.
@@ -198,14 +215,154 @@ const AI_PROMPT_TEXT = `You are an expert LaTeX exam parser and JSON formatting 
 }
 \`\`\``;
 
+// ============================================================================
+// 2. 3 SUBJECT QUESTION GENERATION PROMPTS (Physics, Higher Math, General Math)
+// ============================================================================
+
+const PROMPT_GEN_PHYSICS = `Suppose you are an Expert Physics Teacher of SSC standard in Bangladesh following the NCTB curriculum. Create an original question set comprising 7 CQ, 7 SQ, and 25 MCQ strictly adhering to the SSC cognitive domain structure.
+
+[Target Chapters: All chapters / Specify specific chapters here if needed]
+*Note: If no specific chapters are listed above, autonomously select and balance topics across mechanics, thermodynamics, waves/optics, and electricity/modern physics.
+
+General Rules:
+1. Avoid clichés from past board exams; construct fresh physical scenarios and realistic experimental data.
+2. Maintain strict NCTB SSC Physics textbook scope (no HSC-level calculus or advanced vector calculus).
+3. Every Creative Question (CQ) must strictly follow the official 4-tier cognitive sub-question format:
+   - (ক) জ্ঞানমূলক (Knowledge) [১ নম্বর] — Direct definition, law, or unit.
+   - (খ) অনুধাবনমূলক (Comprehension) [২ নম্বর] — Conceptual "why" or "explain" question.
+   - (গ) প্রয়োগমূলক (Application) [৩ নম্বর] — Direct numerical calculation using stem data.
+   - (ঘ) উচ্চতর দক্ষতামূলক (Higher Ability / Analysis) [৪ নম্বর] — Comparative analysis, evaluation, or feasibility test.
+
+CQ Distribution (7 CQs in total):
+- 3 Mixed-Chapter CQs: Seamlessly pair two naturally related topics.
+- 4 Single-Chapter CQs: Deep dives into core single-chapter phenomena.
+
+SQ Distribution (7 Short Questions in total):
+- 4 Proofs/Derivations: Formal mathematical derivations of fundamental formulas strictly within textbook boundaries (e.g., $E_k = \frac{1}{2}mv^2$, equivalent resistances, or mirror equation relations).
+- 3 Conceptual Questions: Insightful qualitative questions evaluating underlying physical principles.
+
+MCQ Distribution (25 Multiple Choice Questions in total):
+- 4 Context-based / Stimulus-based (অভিন্ন তথ্যভিত্তিক): 2 stems with 2 dependent questions each.
+- 4 Multiple-completion (বহুপদী সমাপ্তিসূচক): Statements (i, ii, iii) with combinations.
+- 12 Mathematical MCQs: 1–2 step quantitative problems.
+- 13 Conceptual MCQs: Testing laws, SI units, dimensions, and qualitative phenomena.
+
+Output: Provide the questions in Bengali (or English Version if specified). Include a complete answer key with full mathematical steps and marking breakdowns.`;
+
+const PROMPT_GEN_HMATH = `Suppose you are an Expert Higher Mathematics Teacher of SSC standard in Bangladesh following the NCTB curriculum. Create an original question set comprising 7 CQ, 7 SQ, and 25 MCQ strictly following the official SSC Higher Math section structure (বিভাগ).
+
+[Target Chapters: All chapters / Specify specific chapters here if needed]
+*Note: If no specific chapters are listed above, autonomously choose and balance topics across the 3 official sections.
+
+General Rules:
+1. Create novel algebraic models, coordinate setups, and geometric configurations without copying past board questions.
+2. Strictly maintain the scope of the NCTB SSC Higher Math syllabus (no HSC calculus, determinants, or 3D cross products).
+3. Every Creative Question (CQ) must strictly follow the standard 3-tier sub-question scheme:
+   - (ক) প্রাথমিক প্রয়োগ / জ্ঞানমূলক [২ নম্বর]
+   - (খ) মূল সমাধান / প্রতিপাদন [৪ নম্বর]
+   - (গ) উচ্চতর সংশ্লেষণ / প্রমাণ [৪ নম্বর]
+
+Section-wise CQ Distribution (7 CQs in total):
+Organize the 7 CQs (3 mixed-chapter, 4 single-chapter) across the 3 official SSC Higher Math sections:
+- 'ক' বিভাগ (বীজগণিত / Algebra) — 3 CQs
+- 'খ' বিভাগ (জ্যামিতি, ভেক্টর ও স্থানাঙ্ক জ্যামিতি / Geometry, Vectors & Coordinate Geometry) — 2 CQs
+- 'গ' বিভাগ (ত্রিকোণমিতি ও সম্ভাবনা / Trigonometry & Probability) — 2 CQs
+
+SQ Distribution (7 Short Questions in total):
+- 4 Proofs/Deductions: Short proofs in vectors, geometric riders, solid geometry properties, or algebraic conditions.
+- 3 Conceptual Questions: Deep reasoning questions (e.g., radian measure constants, bijectivity criteria, or axiomatic probability).
+
+MCQ Distribution (25 Multiple Choice Questions in total):
+- 4 Context-based / Stimulus-based (অভিন্ন তথ্যভিত্তিক): 2 stems with 2 connected questions each.
+- 4 Multiple-completion (বহুপদী সমাপ্তিসূচক): Statements (i, ii, iii) with combinations.
+- 12 Mathematical MCQs: Quantitative problems covering coordinates, vector operations, series, binomial expansion, or solid geometry.
+- 13 Conceptual MCQs: Testing domain/range, conic/geometric properties, vector conditions, and probability laws.
+
+Output: Provide the questions in Bengali (or English Version if specified). Include a complete answer key with worked-out solutions and proofs.`;
+
+const PROMPT_GEN_MATH = `Suppose you are an Expert General Mathematics Teacher of SSC standard in Bangladesh following the NCTB curriculum. Create an original question set comprising 8 CQ, 15 SQ, and 30 MCQ strictly following the official SSC question pattern and section divisions (বিভাগ).
+
+[Target Chapters: All domains / Specify specific chapters here if needed]
+*Note: If no specific chapters are listed above, autonomously select and balance topics across all four official sections.
+
+General Rules:
+1. Do not reuse past board exam stems or guidebook clichés; generate fresh, non-routine mathematical scenarios.
+2. All problems must be fully solvable using methods within the NCTB SSC General Math textbook (no HSC calculus, matrices, or coordinate geometry).
+3. Every Creative Question (CQ) must strictly follow the standard 3-tier sub-question structure:
+   - (ক) জ্ঞানমূলক / সরল প্রয়োগ [২ নম্বর]
+   - (খ) অনুধাবন / সাধারণ সমাধান বা প্রমাণ [৪ নম্বর]
+   - (গ) প্রয়োগ / উচ্চতর বিশ্লেষণ [৪ নম্বর]
+
+Section-wise CQ Distribution (8 CQs in total):
+Structure the CQs under the 4 official SSC board sections, maintaining a mix of 4 mixed-chapter and 4 single-chapter questions:
+- 'ক' বিভাগ (বীজগণিত / Algebra) — 2 CQs
+- 'খ' বিভাগ (জ্যামিতি / Geometry) — 2 CQs
+- 'গ' বিভাগ (ত্রিকোণমিতি ও পরিমিতি / Trigonometry & Mensuration) — 2 CQs
+- 'ঘ' বিভাগ (পরিসংখ্যান / Statistics) — 2 CQs
+
+SQ Distribution (15 Short Questions in total):
+- 8 Proofs/Deductions: Short algebraic identity deductions, geometric rider verifications, and trigonometric relations.
+- 7 Conceptual Questions: Non-trivial questions covering definitions, nature of roots/equations, geometric inequalities, and cumulative frequency properties.
+
+MCQ Distribution (30 Multiple Choice Questions in total):
+- 6 Context-based / Stimulus-based (অভিন্ন তথ্যভিত্তিক): 3 stems with 2 related questions each.
+- 6 Multiple-completion (বহুপদী সমাপ্তিসূচক): Statements (i, ii, iii) with standard combinations.
+- 13 Calculation-based MCQs: Direct problem-solving across the 4 domains.
+- 17 Conceptual MCQs: Definitions, laws, formulas, and theorem corollaries.
+
+Output: Provide the questions in Bengali (or English Version if specified). Include a complete answer key with step-by-step solutions for CQs and SQs.`;
+
+const GENERATION_PROMPTS: Record<
+  SubjectId,
+  {
+    label: string;
+    banglaLabel: string;
+    icon: typeof Atom;
+    preset: string;
+    prompt: string;
+  }
+> = {
+  ssc_physics: {
+    label: "SSC Physics",
+    banglaLabel: "পদার্থবিজ্ঞান",
+    icon: Atom,
+    preset: "ssc_physics",
+    prompt: PROMPT_GEN_PHYSICS,
+  },
+  ssc_hmath: {
+    label: "SSC Higher Math",
+    banglaLabel: "উচ্চতর গণিত",
+    icon: Calculator,
+    preset: "ssc_hmath",
+    prompt: PROMPT_GEN_HMATH,
+  },
+  ssc_math: {
+    label: "SSC General Math",
+    banglaLabel: "সাধারণ গণিত",
+    icon: BookOpen,
+    preset: "ssc_math",
+    prompt: PROMPT_GEN_MATH,
+  },
+};
+
 export function AiPromptDialog({ open, onOpenChange }: AiPromptDialogProps) {
+  const [mode, setMode] = useState<Mode>("generate");
+  const [subject, setSubject] = useState<SubjectId>("ssc_physics");
   const [copied, setCopied] = useState(false);
+
+  const activePromptText =
+    mode === "format"
+      ? ORIGINAL_XELATEX_FORMATTER_PROMPT
+      : GENERATION_PROMPTS[subject].prompt;
+
+  const activeLabel =
+    mode === "format" ? "XeLaTeX Formatter" : GENERATION_PROMPTS[subject].label;
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(AI_PROMPT_TEXT);
+      await navigator.clipboard.writeText(activePromptText);
       setCopied(true);
-      toast.success("AI Prompt copied to clipboard!");
+      toast.success(`${activeLabel} prompt copied to clipboard!`);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Failed to copy to clipboard.");
@@ -214,44 +371,152 @@ export function AiPromptDialog({ open, onOpenChange }: AiPromptDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-4 sm:p-6">
-        <DialogHeader className="shrink-0 space-y-1">
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-4 sm:p-6">
+        <DialogHeader className="shrink-0 space-y-2 pb-2.5 border-b border-border/60">
           <div className="flex items-center gap-2 text-primary">
-            <Sparkles className="size-5 text-yellow-600" />
-            <DialogTitle className="text-base font-bold text-foreground">
-              AI Question-to-JSON System Prompt
+            <Sparkles className="size-5 text-yellow-600 dark:text-yellow-400 shrink-0" />
+            <DialogTitle className="text-base sm:text-lg font-bold text-foreground">
+              AI Question Prompts & XeLaTeX Formatter
             </DialogTitle>
           </div>
           <DialogDescription className="text-xs text-muted-foreground">
-            Copy and paste this prompt into ChatGPT, Claude, or Gemini along
-            with any exam question text or image transcript.
+            Choose whether you want AI to generate a brand new exam or parse an
+            existing question paper into XeLaTeX JSON format.
           </DialogDescription>
+
+          {/* Top Mode Toggle */}
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-muted/90 rounded-lg border border-border/80 text-xs">
+            <button
+              type="button"
+              onClick={() => setMode("generate")}
+              className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md font-semibold transition-all cursor-pointer ${
+                mode === "generate"
+                  ? "bg-background text-primary shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Wand2 className="size-3.5" />
+              <span>Generate Questions (3 Subjects)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("format")}
+              className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md font-semibold transition-all cursor-pointer ${
+                mode === "format"
+                  ? "bg-background text-primary shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <FileCode2 className="size-3.5" />
+              <span>XeLaTeX Formatter (Parser)</span>
+            </button>
+          </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto rounded-lg bg-neutral-950 p-3 sm:p-4 font-mono text-[11px] sm:text-xs text-neutral-200 border border-neutral-800 leading-relaxed">
-          <pre className="whitespace-pre-wrap">{AI_PROMPT_TEXT}</pre>
-        </div>
+        {/* Content Body */}
+        {mode === "generate" ? (
+          <Tabs
+            value={subject}
+            onValueChange={(val) => setSubject(val as SubjectId)}
+            className="flex-1 flex flex-col min-h-0 pt-2"
+          >
+            <TabsList className="grid grid-cols-3 h-9 w-full shrink-0 bg-muted/80 p-1">
+              {(
+                [
+                  {
+                    id: "ssc_physics",
+                    label: "SSC Physics",
+                    bangla: "পদার্থবিজ্ঞান",
+                    icon: Atom,
+                  },
+                  {
+                    id: "ssc_hmath",
+                    label: "SSC Higher Math",
+                    bangla: "উচ্চতর গণিত",
+                    icon: Calculator,
+                  },
+                  {
+                    id: "ssc_math",
+                    label: "SSC General Math",
+                    bangla: "সাধারণ গণিত",
+                    icon: BookOpen,
+                  },
+                ] as const
+              ).map((item) => {
+                const Icon = item.icon;
+                return (
+                  <TabsTrigger
+                    key={item.id}
+                    value={item.id}
+                    className="flex items-center justify-center gap-1.5 text-xs font-medium data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs"
+                  >
+                    <Icon className="size-3.5 shrink-0" />
+                    <span className="hidden sm:inline">{item.label}</span>
+                    <span className="sm:hidden">{item.bangla}</span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
 
-        <div className="flex justify-end gap-2 pt-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-          >
-            Close
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleCopy}
-            className="gap-1.5 bg-primary text-primary-foreground"
-          >
-            {copied ? (
-              <Check className="size-3.5 text-accent" />
-            ) : (
-              <Copy className="size-3.5" />
-            )}
-            {copied ? "Copied!" : "Copy Full Prompt"}
-          </Button>
+            <TabsContent
+              value={subject}
+              className="flex-1 min-h-0 mt-2 overflow-hidden flex flex-col"
+            >
+              <div className="flex-1 overflow-auto rounded-lg bg-neutral-950 p-3 sm:p-4 font-mono text-[11px] sm:text-xs text-neutral-200 border border-neutral-800 leading-relaxed no-scrollbar select-text">
+                <pre className="whitespace-pre-wrap">
+                  {GENERATION_PROMPTS[subject].prompt}
+                </pre>
+              </div>
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <div className="flex-1 min-h-0 mt-2 overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-auto rounded-lg bg-neutral-950 p-3 sm:p-4 font-mono text-[11px] sm:text-xs text-neutral-200 border border-neutral-800 leading-relaxed no-scrollbar select-text">
+              <pre className="whitespace-pre-wrap">
+                {ORIGINAL_XELATEX_FORMATTER_PROMPT}
+              </pre>
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between gap-2 pt-3 border-t border-border/60 shrink-0">
+          <div className="text-[11px] text-muted-foreground hidden sm:flex items-center gap-2">
+            <span>
+              Target:{" "}
+              <strong className="text-foreground font-semibold">
+                {activeLabel}
+              </strong>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
+              Close
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleCopy}
+              className="gap-1.5 bg-primary text-primary-foreground font-medium"
+            >
+              {copied ? (
+                <Check className="size-3.5 text-emerald-400" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+              {copied
+                ? "Copied!"
+                : `Copy ${
+                    mode === "format"
+                      ? "XeLaTeX Formatter Prompt"
+                      : `${GENERATION_PROMPTS[subject].label} Prompt`
+                  }`}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -393,7 +393,7 @@ export default function HomePage() {
           <Button
             variant="outline"
             size="sm"
-            className="h-8 text-xs gap-1.5 font-medium border-border bg-card shadow-2xs hover:bg-accent/10"
+            className="h-8 text-xs gap-1.5 font-medium border-border bg-card shadow-2xs hover:bg-accent/10 hover:text-foreground"
             onClick={() => setAiPromptOpen(true)}
           >
             <Sparkles className="size-3.5 text-yellow-600 dark:text-yellow-400 fill-yellow-500/20" />
